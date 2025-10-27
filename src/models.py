@@ -22,6 +22,7 @@ class OrderType(str, Enum):
     """订单类型枚举"""
     PREMIUM = "premium"  # Premium会员直充
     ENERGY = "energy"  # 能量兑换
+    DEPOSIT = "deposit"  # 余额充值
     OTHER = "other"  # 其他
 
 

@@ -22,14 +22,16 @@ logger = logging.getLogger(__name__)
 class TRC20Handler:
     """TRC20回调处理器"""
     
-    def __init__(self, delivery_service=None):
+    def __init__(self, delivery_service=None, db_session=None):
         """
         初始化处理器
         
         Args:
             delivery_service: Premium 交付服务实例（可选）
+            db_session: 数据库会话（可选，用于测试）
         """
         self.delivery_service = delivery_service
+        self.db_session = db_session
     
     @staticmethod
     def validate_tron_address(address: str) -> bool:
@@ -113,6 +115,11 @@ class TRC20Handler:
             处理结果
         """
         try:
+            # 检查订单类型：如果是 deposit，走充值流程
+            if callback.order_type == "deposit":
+                return await self._process_deposit_payment(callback)
+            
+            # 否则走普通订单流程（Premium等）
             # 查找匹配的订单
             order = await order_manager.find_order_by_amount(callback.amount)
             
@@ -187,6 +194,65 @@ class TRC20Handler:
                 "success": False,
                 "error": f"Processing error: {str(e)}",
                 "order_id": callback.order_id
+            }
+    
+    async def _process_deposit_payment(self, callback: PaymentCallback) -> Dict[str, Any]:
+        """
+        处理充值订单支付
+        
+        Args:
+            callback: 支付回调数据
+            
+        Returns:
+            处理结果
+        """
+        try:
+            from ..wallet.wallet_manager import WalletManager
+            from ..database import get_db, close_db
+            
+            # 使用注入的数据库会话或创建新的
+            if self.db_session:
+                wallet = WalletManager(db=self.db_session)
+                success, message = wallet.process_deposit_callback(
+                    order_id=callback.order_id,
+                    amount=callback.amount,
+                    tx_hash=callback.tx_hash
+                )
+            else:
+                db = get_db()
+                try:
+                    wallet = WalletManager(db=db)
+                    success, message = wallet.process_deposit_callback(
+                        order_id=callback.order_id,
+                        amount=callback.amount,
+                        tx_hash=callback.tx_hash
+                    )
+                finally:
+                    close_db(db)
+            
+            if success:
+                return {
+                    "success": True,
+                    "message": message,
+                    "order_id": callback.order_id,
+                    "tx_hash": callback.tx_hash,
+                    "order_type": "deposit"
+                }
+            else:
+                return {
+                    "success": False,
+                    "error": message,
+                    "order_id": callback.order_id,
+                    "order_type": "deposit"
+                }
+        
+        except Exception as e:
+            logger.error(f"Error processing deposit payment for order {callback.order_id}: {str(e)}")
+            return {
+                "success": False,
+                "error": f"Deposit processing error: {str(e)}",
+                "order_id": callback.order_id,
+                "order_type": "deposit"
             }
     
     async def simulate_payment(self, order_id: str, tx_hash: str = None) -> Dict[str, Any]:
