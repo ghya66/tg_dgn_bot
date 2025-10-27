@@ -2,13 +2,14 @@
 TRC20 Webhook 回调处理器
 路由：POST /webhook/trc20
 验证 HMAC 签名、解析 JSON、金额匹配后更新订单状态
+支持 Premium 订单的自动交付
 """
 import logging
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 import time
 import re
 
-from ..models import PaymentCallback
+from ..models import PaymentCallback, OrderStatus, OrderType
 from ..signature import signature_validator
 from ..payments.order import order_manager
 from ..payments.amount_calculator import AmountCalculator
@@ -20,6 +21,15 @@ logger = logging.getLogger(__name__)
 
 class TRC20Handler:
     """TRC20回调处理器"""
+    
+    def __init__(self, delivery_service=None):
+        """
+        初始化处理器
+        
+        Args:
+            delivery_service: Premium 交付服务实例（可选）
+        """
+        self.delivery_service = delivery_service
     
     @staticmethod
     def validate_tron_address(address: str) -> bool:
@@ -36,8 +46,7 @@ class TRC20Handler:
         tron_pattern = r'^T[A-HJ-NP-Z1-9a-km-z]{33}$'
         return bool(re.match(tron_pattern, address))
     
-    @staticmethod
-    async def handle_webhook(payload: Dict[str, Any]) -> Dict[str, Any]:
+    async def handle_webhook(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
         处理TRC20支付回调
         
@@ -75,11 +84,12 @@ class TRC20Handler:
                 tx_hash=payload["txid"],
                 block_number=payload.get("block_number", 0),
                 timestamp=payload["timestamp"],
-                signature=signature
+                signature=signature,
+                order_type=payload.get("order_type")
             )
             
             # 处理支付确认
-            result = await TRC20Handler._process_payment(callback)
+            result = await self._process_payment(callback)
             
             logger.info(f"Processed payment callback for order {callback.order_id}: {result}")
             
@@ -92,8 +102,7 @@ class TRC20Handler:
                 "error": "Internal server error"
             }
     
-    @staticmethod
-    async def _process_payment(callback: PaymentCallback) -> Dict[str, Any]:
+    async def _process_payment(self, callback: PaymentCallback) -> Dict[str, Any]:
         """
         处理支付确认
         
@@ -148,19 +157,29 @@ class TRC20Handler:
                 callback.tx_hash
             )
             
-            if success:
-                return {
-                    "success": True,
-                    "message": "Payment processed successfully",
-                    "order_id": order.order_id,
-                    "tx_hash": callback.tx_hash
-                }
-            else:
+            if not success:
                 return {
                     "success": False,
                     "error": "Failed to update order status",
                     "order_id": order.order_id
                 }
+            
+            # 如果是 Premium 订单，自动触发交付
+            delivery_result = None
+            if order.order_type == OrderType.PREMIUM and self.delivery_service:
+                try:
+                    delivery_result = await self.delivery_service.deliver_premium(order)
+                    logger.info(f"Premium delivery initiated for order {order.order_id}")
+                except Exception as e:
+                    logger.error(f"Failed to deliver premium for order {order.order_id}: {e}")
+            
+            return {
+                "success": True,
+                "message": "Payment processed successfully",
+                "order_id": order.order_id,
+                "tx_hash": callback.tx_hash,
+                "delivery_result": delivery_result
+            }
         
         except Exception as e:
             logger.error(f"Error processing payment for order {callback.order_id}: {str(e)}")
@@ -170,8 +189,7 @@ class TRC20Handler:
                 "order_id": callback.order_id
             }
     
-    @staticmethod
-    async def simulate_payment(order_id: str, tx_hash: str = None) -> Dict[str, Any]:
+    async def simulate_payment(self, order_id: str, tx_hash: str = None) -> Dict[str, Any]:
         """
         模拟支付回调（用于测试）
         
@@ -206,7 +224,7 @@ class TRC20Handler:
             )
             
             # 处理回调
-            result = await TRC20Handler.handle_webhook(callback_data)
+            result = await self.handle_webhook(callback_data)
             
             result["simulation"] = True
             result["callback_data"] = callback_data
@@ -247,13 +265,20 @@ class TRC20Handler:
             if field not in payload:
                 errors.append(f"Missing field: {field}")
             elif not isinstance(payload[field], expected_type):
-                errors.append(f"Invalid type for {field}: expected {expected_type.__name__}")
+                # 处理元组类型（如 (int, float)）的显示
+                if isinstance(expected_type, tuple):
+                    type_names = " or ".join(t.__name__ for t in expected_type)
+                    errors.append(f"Invalid type for {field}: expected {type_names}")
+                else:
+                    errors.append(f"Invalid type for {field}: expected {expected_type.__name__}")
         
         # 验证金额范围
         if "amount" in payload:
             amount = payload["amount"]
-            if not AmountCalculator.is_valid_payment_amount(amount):
-                errors.append(f"Invalid payment amount: {amount}")
+            # 只有在类型正确时才验证金额范围
+            if isinstance(amount, (int, float)):
+                if not AmountCalculator.is_valid_payment_amount(amount):
+                    errors.append(f"Invalid payment amount: {amount}")
         
         # 验证交易哈希格式
         if "txid" in payload:
@@ -264,10 +289,12 @@ class TRC20Handler:
         # 验证时间戳
         if "timestamp" in payload:
             timestamp = payload["timestamp"]
-            current_time = int(time.time())
-            # 允许5分钟的时间差
-            if abs(current_time - timestamp) > 300:
-                errors.append(f"Timestamp too old or future: {timestamp}")
+            # 只有在类型正确时才验证时间戳
+            if isinstance(timestamp, int):
+                current_time = int(time.time())
+                # 允许5分钟的时间差
+                if abs(current_time - timestamp) > 300:
+                    errors.append(f"Timestamp too old or future: {timestamp}")
         
         if errors:
             return {
@@ -281,5 +308,12 @@ class TRC20Handler:
         }
 
 
-# 创建全局实例
-trc20_handler = TRC20Handler()
+# 创建全局实例（需要在初始化时传入 delivery_service）
+_handler_instance = None
+
+def get_trc20_handler(delivery_service=None):
+    """获取或创建全局 TRC20 处理器实例"""
+    global _handler_instance
+    if _handler_instance is None:
+        _handler_instance = TRC20Handler(delivery_service)
+    return _handler_instance

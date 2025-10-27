@@ -166,7 +166,7 @@ def test_prepare_callback_data():
     expected_data = {
         "order_id": "test_order_123",
         "amount": 10.123,
-        "tx_hash": "test_tx_hash",
+        "txid": "test_tx_hash",  # 字段名改为 txid
         "block_number": 12345678,
         "timestamp": 1635724800
     }
@@ -190,7 +190,7 @@ def test_create_signed_callback():
     # 验证包含所有必需字段
     assert "order_id" in callback_data
     assert "amount" in callback_data
-    assert "tx_hash" in callback_data
+    assert "txid" in callback_data  # 字段名改为 txid
     assert "block_number" in callback_data
     assert "timestamp" in callback_data
     assert "signature" in callback_data

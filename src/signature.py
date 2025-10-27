@@ -81,7 +81,7 @@ class SignatureValidator:
         return {
             "order_id": order_id,
             "amount": amount,
-            "tx_hash": tx_hash,
+            "txid": tx_hash,  # TRC20Handler 期望 txid 字段
             "block_number": block_number,
             "timestamp": timestamp
         }

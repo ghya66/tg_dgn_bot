@@ -3,7 +3,7 @@
 """
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Optional
+from typing import Optional, List
 from pydantic import BaseModel, Field
 import uuid
 
@@ -12,8 +12,17 @@ class OrderStatus(str, Enum):
     """订单状态枚举"""
     PENDING = "PENDING"  # 待支付
     PAID = "PAID"        # 已支付
+    DELIVERED = "DELIVERED"  # 已交付
+    PARTIAL = "PARTIAL"  # 部分交付
     EXPIRED = "EXPIRED"  # 已过期
     CANCELLED = "CANCELLED"  # 已取消
+
+
+class OrderType(str, Enum):
+    """订单类型枚举"""
+    PREMIUM = "premium"  # Premium会员直充
+    ENERGY = "energy"  # 能量兑换
+    OTHER = "other"  # 其他
 
 
 class Order(BaseModel):
@@ -23,10 +32,16 @@ class Order(BaseModel):
     unique_suffix: int = Field(..., description="唯一后缀 (1-999)")
     total_amount: float = Field(..., description="总金额 = 基础金额 + 唯一后缀/1000")
     status: OrderStatus = Field(default=OrderStatus.PENDING)
+    order_type: OrderType = Field(default=OrderType.OTHER, description="订单类型")
     user_id: int = Field(..., description="用户ID")
     created_at: datetime = Field(default_factory=datetime.now)
     updated_at: datetime = Field(default_factory=datetime.now)
     expires_at: datetime = Field(..., description="过期时间")
+    
+    # Premium 订单专用字段
+    premium_months: Optional[int] = Field(None, description="Premium月数 (3/6/12)")
+    recipients: Optional[List[str]] = Field(None, description="收件人列表（用户名）")
+    delivery_results: Optional[dict] = Field(None, description="交付结果详情")
     
     @property
     def is_expired(self) -> bool:
@@ -55,6 +70,7 @@ class PaymentCallback(BaseModel):
     block_number: int
     timestamp: int
     signature: str = Field(..., description="HMAC签名")
+    order_type: Optional[str] = Field(None, description="订单类型")
     
     @property
     def amount_in_micro_usdt(self) -> int:

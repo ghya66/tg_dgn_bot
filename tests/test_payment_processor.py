@@ -13,17 +13,25 @@ from src.payments.suffix_manager import suffix_manager
 
 
 @pytest.fixture
-async def payment_processor():
+def payment_processor():
     """创建支付处理器实例"""
     processor = OrderManager()
     
     # 模拟Redis客户端
-    processor.redis_client = AsyncMock()
+    processor.redis_client = MagicMock()
     
-    yield processor
+    # 配置 Redis pipeline mock
+    mock_pipeline = MagicMock()
+    mock_pipeline.set = MagicMock()
+    mock_pipeline.execute = AsyncMock(return_value=[True, True])
+    processor.redis_client.pipeline.return_value = mock_pipeline
     
-    if processor.redis_client:
-        await processor.disconnect()
+    # 配置其他 Redis 方法
+    processor.redis_client.set = AsyncMock(return_value=True)
+    processor.redis_client.get = AsyncMock(return_value=None)
+    processor.redis_client.keys = AsyncMock(return_value=[])
+    
+    return processor
 
 
 @pytest.fixture
@@ -77,13 +85,9 @@ def test_amounts_match(payment_processor):
 async def test_create_order_success(mock_suffix_manager, payment_processor):
     """测试成功创建订单"""
     # 模拟后缀分配成功
-    mock_suffix_manager.allocate_suffix.return_value = 123
-    mock_suffix_manager.release_suffix.return_value = True
-    mock_suffix_manager._reserve_suffix.return_value = True
-    
-    # 模拟Redis保存成功
-    payment_processor.redis_client.set.return_value = True
-    payment_processor.redis_client.pipeline.return_value.execute.return_value = [True, True]
+    mock_suffix_manager.allocate_suffix = AsyncMock(return_value=123)
+    mock_suffix_manager.release_suffix = AsyncMock(return_value=True)
+    mock_suffix_manager._reserve_suffix = AsyncMock(return_value=True)
     
     order = await payment_processor.create_order(12345, 10.0)
     
@@ -100,7 +104,7 @@ async def test_create_order_success(mock_suffix_manager, payment_processor):
 async def test_create_order_no_suffix_available(mock_suffix_manager, payment_processor):
     """测试没有可用后缀时创建订单失败"""
     # 模拟后缀分配失败
-    mock_suffix_manager.allocate_suffix.return_value = None
+    mock_suffix_manager.allocate_suffix = AsyncMock(return_value=None)
     
     order = await payment_processor.create_order(12345, 10.0)
     
@@ -155,6 +159,9 @@ async def test_find_order_by_amount(payment_processor, sample_order):
 @patch('src.payments.order.suffix_manager')
 async def test_update_order_status(mock_suffix_manager, payment_processor, sample_order):
     """测试更新订单状态"""
+    # 配置 async mock
+    mock_suffix_manager.release_suffix = AsyncMock(return_value=True)
+    
     # 模拟获取订单
     with patch.object(payment_processor, 'get_order', return_value=sample_order):
         with patch.object(payment_processor, '_save_order', return_value=True):

@@ -1,7 +1,8 @@
 """
 订单状态管理
-订单状态枚举：PENDING、PAID、EXPIRED、CANCELLED
+订单状态枚举：PENDING、PAID、DELIVERED、PARTIAL、EXPIRED、CANCELLED
 幂等更新逻辑（同一 order_id 多次回调仅处理一次）
+支持 Premium 订单类型
 """
 import asyncio
 from typing import Optional, List
@@ -10,7 +11,7 @@ from datetime import datetime, timedelta
 import json
 from enum import Enum
 
-from ..models import Order, OrderStatus
+from ..models import Order, OrderStatus, OrderType
 from .suffix_manager import suffix_manager
 from ..config import settings
 
@@ -36,13 +37,23 @@ class OrderManager:
         if self.redis_client:
             await self.redis_client.close()
     
-    async def create_order(self, user_id: int, base_amount: float) -> Optional[Order]:
+    async def create_order(
+        self, 
+        user_id: int, 
+        base_amount: float,
+        order_type: OrderType = OrderType.OTHER,
+        premium_months: Optional[int] = None,
+        recipients: Optional[List[str]] = None
+    ) -> Optional[Order]:
         """
         创建新订单
         
         Args:
             user_id: 用户ID
             base_amount: 基础金额
+            order_type: 订单类型
+            premium_months: Premium 月数（仅 Premium 订单需要）
+            recipients: 收件人列表（仅 Premium 订单需要）
             
         Returns:
             创建的订单或None（如果创建失败）
@@ -66,6 +77,9 @@ class OrderManager:
             unique_suffix=suffix,
             total_amount=total_amount,
             user_id=user_id,
+            order_type=order_type,
+            premium_months=premium_months,
+            recipients=recipients,
             expires_at=datetime.now() + timedelta(minutes=settings.order_timeout_minutes)
         )
         
@@ -73,7 +87,9 @@ class OrderManager:
         await suffix_manager.release_suffix(suffix, order_id_temp)
         if not await suffix_manager._reserve_suffix(suffix, order.order_id):
             # 如果重新绑定失败，说明后缀被占用了，重试
-            return await self.create_order(user_id, base_amount)
+            return await self.create_order(
+                user_id, base_amount, order_type, premium_months, recipients
+            )
         
         # 保存订单到Redis
         await self._save_order(order)
@@ -148,8 +164,13 @@ class OrderManager:
         
         return await self.get_order(order_id)
     
-    async def update_order_status(self, order_id: str, new_status: OrderStatus, 
-                                 tx_hash: str = None) -> bool:
+    async def update_order_status(
+        self, 
+        order_id: str, 
+        new_status: OrderStatus, 
+        tx_hash: str = None,
+        delivery_results: dict = None
+    ) -> bool:
         """
         幂等更新订单状态
         
@@ -157,6 +178,7 @@ class OrderManager:
             order_id: 订单ID
             new_status: 新状态
             tx_hash: 交易哈希（可选）
+            delivery_results: 交付结果（仅 Premium 订单）
             
         Returns:
             是否更新成功
@@ -183,8 +205,12 @@ class OrderManager:
             # 这里可以扩展Order模型来包含tx_hash字段
             pass
         
+        # 更新交付结果
+        if delivery_results:
+            order.delivery_results = delivery_results
+        
         # 如果订单完成或取消，释放唯一后缀
-        if new_status in [OrderStatus.PAID, OrderStatus.CANCELLED, OrderStatus.EXPIRED]:
+        if new_status in [OrderStatus.PAID, OrderStatus.DELIVERED, OrderStatus.CANCELLED, OrderStatus.EXPIRED]:
             await suffix_manager.release_suffix(order.unique_suffix, order_id)
         
         # 保存更新后的订单
@@ -194,7 +220,9 @@ class OrderManager:
         """验证状态转换是否有效"""
         valid_transitions = {
             OrderStatus.PENDING: [OrderStatus.PAID, OrderStatus.EXPIRED, OrderStatus.CANCELLED],
-            OrderStatus.PAID: [],  # 已支付状态不可转换
+            OrderStatus.PAID: [OrderStatus.DELIVERED, OrderStatus.PARTIAL],  # 支付后可交付
+            OrderStatus.DELIVERED: [],  # 已交付状态不可转换
+            OrderStatus.PARTIAL: [OrderStatus.DELIVERED],  # 部分交付可重试变为全部交付
             OrderStatus.EXPIRED: [],  # 已过期状态不可转换
             OrderStatus.CANCELLED: []  # 已取消状态不可转换
         }
@@ -232,6 +260,8 @@ class OrderManager:
             "total_orders": 0,
             "pending_orders": 0,
             "paid_orders": 0,
+            "delivered_orders": 0,
+            "partial_orders": 0,
             "expired_orders": 0,
             "cancelled_orders": 0,
             "active_suffixes": 0
@@ -247,6 +277,10 @@ class OrderManager:
                     stats["pending_orders"] += 1
                 elif order.status == OrderStatus.PAID:
                     stats["paid_orders"] += 1
+                elif order.status == OrderStatus.DELIVERED:
+                    stats["delivered_orders"] += 1
+                elif order.status == OrderStatus.PARTIAL:
+                    stats["partial_orders"] += 1
                 elif order.status == OrderStatus.EXPIRED:
                     stats["expired_orders"] += 1
                 elif order.status == OrderStatus.CANCELLED:
@@ -256,6 +290,19 @@ class OrderManager:
         stats["active_suffixes"] = await suffix_manager.cleanup_expired()
         
         return stats
+
+
+    async def cancel_order(self, order_id: str) -> bool:
+        """
+        取消订单
+        
+        Args:
+            order_id: 订单ID
+            
+        Returns:
+            是否取消成功
+        """
+        return await self.update_order_status(order_id, OrderStatus.CANCELLED)
 
 
 # 全局实例

@@ -108,13 +108,28 @@ class AmountCalculator:
         Returns:
             是否有效
         """
-        # 检查金额范围
-        if amount < min_base + 0.001 or amount > max_base + 0.999:
+        # 检查金额范围 - 最小值是 min_base，最大值是 max_base + 0.999
+        if amount < min_base or amount > max_base + 0.999:
             return False
         
-        # 检查是否有3位小数后缀
-        decimal_part = amount - int(amount)
-        micro_decimal = int(round(decimal_part * 1000))
+        # 将金额转换为字符串检查小数位数（不四舍五入）
+        amount_str = str(amount)
+        
+        # 检查是否有小数点
+        if '.' not in amount_str:
+            return False
+            
+        decimal_part = amount_str.split('.')[1]
+        
+        # 必须恰好有3位小数
+        if len(decimal_part) != 3:
+            return False
+        
+        # 检查小数后缀是否在1-999范围内
+        try:
+            micro_decimal = int(decimal_part)
+        except ValueError:
+            return False
         
         # 后缀必须在1-999范围内
         return 1 <= micro_decimal <= 999

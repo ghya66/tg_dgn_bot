@@ -13,6 +13,11 @@ from src.models import Order, OrderStatus
 class TestTRC20Handler:
     """TRC20处理器测试类"""
     
+    @pytest.fixture
+    def handler(self):
+        """创建 TRC20Handler 实例"""
+        return TRC20Handler()
+    
     def test_validate_tron_address(self):
         """测试波场地址验证"""
         # 有效地址
@@ -39,7 +44,7 @@ class TestTRC20Handler:
             assert TRC20Handler.validate_tron_address(addr) is False
     
     @pytest.mark.asyncio
-    async def test_handle_webhook_success(self):
+    async def test_handle_webhook_success(self, handler):
         """测试成功处理webhook"""
         # 模拟有效的回调数据
         payload = {
@@ -51,7 +56,7 @@ class TestTRC20Handler:
         }
         
         with patch('src.webhook.trc20_handler.signature_validator') as mock_validator:
-            with patch('src.webhook.trc20_handler.TRC20Handler._process_payment') as mock_process:
+            with patch.object(handler, '_process_payment') as mock_process:
                 # 模拟签名验证成功
                 mock_validator.verify_signature.return_value = True
                 
@@ -61,7 +66,7 @@ class TestTRC20Handler:
                     "order_id": "test_order_123"
                 }
                 
-                result = await TRC20Handler.handle_webhook(payload)
+                result = await handler.handle_webhook(payload)
                 
                 assert result["success"] is True
                 assert result["order_id"] == "test_order_123"
@@ -71,7 +76,7 @@ class TestTRC20Handler:
                 mock_process.assert_called_once()
     
     @pytest.mark.asyncio
-    async def test_handle_webhook_missing_fields(self):
+    async def test_handle_webhook_missing_fields(self, handler):
         """测试缺少必需字段的webhook"""
         # 缺少signature字段
         payload = {
@@ -81,13 +86,13 @@ class TestTRC20Handler:
             "timestamp": int(time.time())
         }
         
-        result = await TRC20Handler.handle_webhook(payload)
+        result = await handler.handle_webhook(payload)
         
         assert result["success"] is False
         assert "Missing required field: signature" in result["error"]
     
     @pytest.mark.asyncio
-    async def test_handle_webhook_invalid_signature(self):
+    async def test_handle_webhook_invalid_signature(self, handler):
         """测试无效签名的webhook"""
         payload = {
             "order_id": "test_order_123",
@@ -101,13 +106,13 @@ class TestTRC20Handler:
             # 模拟签名验证失败
             mock_validator.verify_signature.return_value = False
             
-            result = await TRC20Handler.handle_webhook(payload)
+            result = await handler.handle_webhook(payload)
             
             assert result["success"] is False
             assert result["error"] == "Invalid signature"
     
     @pytest.mark.asyncio
-    async def test_process_payment_success(self):
+    async def test_process_payment_success(self, handler):
         """测试成功处理支付"""
         from src.models import PaymentCallback
         
@@ -134,22 +139,22 @@ class TestTRC20Handler:
         with patch('src.webhook.trc20_handler.order_manager') as mock_manager:
             with patch('src.webhook.trc20_handler.AmountCalculator') as mock_calculator:
                 # 模拟订单查找成功
-                mock_manager.find_order_by_amount.return_value = order
+                mock_manager.find_order_by_amount = AsyncMock(return_value=order)
                 
                 # 模拟金额匹配
                 mock_calculator.verify_amount.return_value = True
                 
                 # 模拟状态更新成功
-                mock_manager.update_order_status.return_value = True
+                mock_manager.update_order_status = AsyncMock(return_value=True)
                 
-                result = await TRC20Handler._process_payment(callback)
+                result = await handler._process_payment(callback)
                 
                 assert result["success"] is True
                 assert result["order_id"] == "test_order_123"
                 assert result["tx_hash"] == "test_tx_hash"
     
     @pytest.mark.asyncio
-    async def test_process_payment_order_not_found(self):
+    async def test_process_payment_order_not_found(self, handler):
         """测试订单未找到"""
         from src.models import PaymentCallback
         
@@ -164,15 +169,15 @@ class TestTRC20Handler:
         
         with patch('src.webhook.trc20_handler.order_manager') as mock_manager:
             # 模拟订单未找到
-            mock_manager.find_order_by_amount.return_value = None
+            mock_manager.find_order_by_amount = AsyncMock(return_value=None)
             
-            result = await TRC20Handler._process_payment(callback)
+            result = await handler._process_payment(callback)
             
             assert result["success"] is False
             assert "Order not found" in result["error"]
     
     @pytest.mark.asyncio
-    async def test_process_payment_order_id_mismatch(self):
+    async def test_process_payment_order_id_mismatch(self, handler):
         """测试订单ID不匹配"""
         from src.models import PaymentCallback
         
@@ -197,15 +202,15 @@ class TestTRC20Handler:
         
         with patch('src.webhook.trc20_handler.order_manager') as mock_manager:
             # 模拟找到订单但ID不匹配
-            mock_manager.find_order_by_amount.return_value = order
+            mock_manager.find_order_by_amount = AsyncMock(return_value=order)
             
-            result = await TRC20Handler._process_payment(callback)
+            result = await handler._process_payment(callback)
             
             assert result["success"] is False
             assert "Order ID mismatch" in result["error"]
     
     @pytest.mark.asyncio
-    async def test_process_payment_amount_mismatch(self):
+    async def test_process_payment_amount_mismatch(self, handler):
         """测试金额不匹配"""
         from src.models import PaymentCallback
         
@@ -230,18 +235,18 @@ class TestTRC20Handler:
         with patch('src.webhook.trc20_handler.order_manager') as mock_manager:
             with patch('src.webhook.trc20_handler.AmountCalculator') as mock_calculator:
                 # 模拟订单查找成功
-                mock_manager.find_order_by_amount.return_value = order
+                mock_manager.find_order_by_amount = AsyncMock(return_value=order)
                 
                 # 模拟金额不匹配
                 mock_calculator.verify_amount.return_value = False
                 
-                result = await TRC20Handler._process_payment(callback)
+                result = await handler._process_payment(callback)
                 
                 assert result["success"] is False
                 assert "Amount mismatch" in result["error"]
     
     @pytest.mark.asyncio
-    async def test_process_payment_expired_order(self):
+    async def test_process_payment_expired_order(self, handler):
         """测试过期订单"""
         from src.models import PaymentCallback
         
@@ -267,21 +272,21 @@ class TestTRC20Handler:
         with patch('src.webhook.trc20_handler.order_manager') as mock_manager:
             with patch('src.webhook.trc20_handler.AmountCalculator') as mock_calculator:
                 # 模拟订单查找成功
-                mock_manager.find_order_by_amount.return_value = order
+                mock_manager.find_order_by_amount = AsyncMock(return_value=order)
                 
                 # 模拟金额匹配
                 mock_calculator.verify_amount.return_value = True
                 
                 # 模拟状态更新成功
-                mock_manager.update_order_status.return_value = True
+                mock_manager.update_order_status = AsyncMock(return_value=True)
                 
-                result = await TRC20Handler._process_payment(callback)
+                result = await handler._process_payment(callback)
                 
                 assert result["success"] is False
                 assert "Order expired" in result["error"]
     
     @pytest.mark.asyncio
-    async def test_simulate_payment(self):
+    async def test_simulate_payment(self, handler):
         """测试模拟支付"""
         order = Order(
             order_id="test_order_123",
@@ -296,7 +301,7 @@ class TestTRC20Handler:
             with patch('src.webhook.trc20_handler.signature_validator') as mock_validator:
                 with patch('src.webhook.trc20_handler.TRC20Handler.handle_webhook') as mock_handle:
                     # 模拟获取订单成功
-                    mock_manager.get_order.return_value = order
+                    mock_manager.get_order = AsyncMock(return_value=order)
                     
                     # 模拟签名生成
                     mock_validator.create_signed_callback.return_value = {
@@ -313,13 +318,13 @@ class TestTRC20Handler:
                         "order_id": "test_order_123"
                     }
                     
-                    result = await TRC20Handler.simulate_payment("test_order_123")
+                    result = await handler.simulate_payment("test_order_123")
                     
                     assert result["success"] is True
                     assert result["simulation"] is True
                     assert "callback_data" in result
     
-    def test_validate_webhook_payload_valid(self):
+    def test_validate_webhook_payload_valid(self, handler):
         """测试有效的webhook载荷验证"""
         payload = {
             "order_id": "test_order_123",
@@ -329,12 +334,12 @@ class TestTRC20Handler:
             "signature": "valid_signature"
         }
         
-        result = TRC20Handler.validate_webhook_payload(payload)
+        result = handler.validate_webhook_payload(payload)
         
         assert result["valid"] is True
         assert len(result["errors"]) == 0
     
-    def test_validate_webhook_payload_missing_fields(self):
+    def test_validate_webhook_payload_missing_fields(self, handler):
         """测试缺少字段的载荷验证"""
         payload = {
             "order_id": "test_order_123",
@@ -342,7 +347,7 @@ class TestTRC20Handler:
             # 缺少 txid, timestamp, signature
         }
         
-        result = TRC20Handler.validate_webhook_payload(payload)
+        result = handler.validate_webhook_payload(payload)
         
         assert result["valid"] is False
         assert len(result["errors"]) == 3  # 缺少3个字段
@@ -350,7 +355,7 @@ class TestTRC20Handler:
         assert any("Missing field: timestamp" in error for error in result["errors"])
         assert any("Missing field: signature" in error for error in result["errors"])
     
-    def test_validate_webhook_payload_invalid_types(self):
+    def test_validate_webhook_payload_invalid_types(self, handler):
         """测试无效类型的载荷验证"""
         payload = {
             "order_id": 123,  # 应该是字符串
@@ -360,12 +365,12 @@ class TestTRC20Handler:
             "signature": 456  # 应该是字符串
         }
         
-        result = TRC20Handler.validate_webhook_payload(payload)
+        result = handler.validate_webhook_payload(payload)
         
         assert result["valid"] is False
         assert len(result["errors"]) >= 4  # 多个类型错误
     
-    def test_validate_webhook_payload_invalid_amount(self):
+    def test_validate_webhook_payload_invalid_amount(self, handler):
         """测试无效金额的载荷验证"""
         payload = {
             "order_id": "test_order_123",
@@ -375,12 +380,12 @@ class TestTRC20Handler:
             "signature": "valid_signature"
         }
         
-        result = TRC20Handler.validate_webhook_payload(payload)
+        result = handler.validate_webhook_payload(payload)
         
         assert result["valid"] is False
         assert any("Invalid payment amount" in error for error in result["errors"])
     
-    def test_validate_webhook_payload_old_timestamp(self):
+    def test_validate_webhook_payload_old_timestamp(self, handler):
         """测试过旧时间戳的载荷验证"""
         payload = {
             "order_id": "test_order_123",
@@ -390,7 +395,7 @@ class TestTRC20Handler:
             "signature": "valid_signature"
         }
         
-        result = TRC20Handler.validate_webhook_payload(payload)
+        result = handler.validate_webhook_payload(payload)
         
         assert result["valid"] is False
         assert any("Timestamp too old" in error for error in result["errors"])

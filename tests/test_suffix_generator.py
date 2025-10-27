@@ -10,17 +10,29 @@ from src.payments.suffix_manager import SuffixManager
 
 
 @pytest.fixture
-async def suffix_generator():
+def suffix_generator():
     """创建后缀生成器实例"""
     generator = SuffixManager()
     
     # 模拟Redis客户端
-    generator.redis_client = AsyncMock()
+    from unittest.mock import MagicMock
+    generator.redis_client = MagicMock()
     
-    yield generator
+    # 配置 Redis pipeline mock
+    mock_pipeline = MagicMock()
+    mock_pipeline.get = MagicMock()
+    mock_pipeline.ttl = MagicMock()
+    mock_pipeline.execute = AsyncMock(return_value=[None, -2])
+    generator.redis_client.pipeline.return_value = mock_pipeline
     
-    if generator.redis_client:
-        await generator.disconnect()
+    # 配置其他 Redis 方法
+    generator.redis_client.set = AsyncMock(return_value=True)
+    generator.redis_client.get = AsyncMock(return_value=None)
+    generator.redis_client.keys = AsyncMock(return_value=[])
+    generator.redis_client.delete = AsyncMock(return_value=1)
+    generator.redis_client.eval = AsyncMock(return_value=1)  # 用于 Lua 脚本
+    
+    return generator
 
 
 @pytest.mark.asyncio
@@ -110,11 +122,10 @@ async def test_extend_suffix_lease(suffix_generator):
 async def test_get_suffix_info(suffix_generator):
     """测试获取后缀信息"""
     # 模拟Redis返回后缀信息
-    suffix_generator.redis_client.pipeline.return_value.execute.return_value = [
+    suffix_generator.redis_client.pipeline.return_value.execute = AsyncMock(return_value=[
         "test_order_123",  # GET结果
         3600  # TTL结果
-    ]
-    suffix_generator.redis_client.pipeline.return_value = suffix_generator.redis_client.pipeline.return_value
+    ])
     
     info = await suffix_generator.get_suffix_info(123)
     
@@ -128,11 +139,10 @@ async def test_get_suffix_info(suffix_generator):
 async def test_get_suffix_info_not_found(suffix_generator):
     """测试获取不存在的后缀信息"""
     # 模拟Redis返回None
-    suffix_generator.redis_client.pipeline.return_value.execute.return_value = [
+    suffix_generator.redis_client.pipeline.return_value.execute = AsyncMock(return_value=[
         None,  # GET结果
         -2     # TTL结果（key不存在）
-    ]
-    suffix_generator.redis_client.pipeline.return_value = suffix_generator.redis_client.pipeline.return_value
+    ])
     
     info = await suffix_generator.get_suffix_info(123)
     

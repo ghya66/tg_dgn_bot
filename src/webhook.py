@@ -8,7 +8,7 @@ from fastapi.responses import JSONResponse
 import time
 
 from .models import PaymentCallback
-from .webhook.trc20_handler import trc20_handler
+from .webhook.trc20_handler import get_trc20_handler
 from .payments.order import order_manager
 from .signature import signature_validator
 
@@ -17,6 +17,9 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = FastAPI(title="TRC20 Payment Webhook", version="1.0.0")
+
+# 获取 TRC20 处理器实例
+trc20_handler = get_trc20_handler()
 
 
 @app.on_event("startup")
