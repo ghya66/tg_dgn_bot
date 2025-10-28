@@ -11,23 +11,31 @@
 ### 完成内容
 
 ✅ **核心功能实现** (5个模块，1869行代码)
+
 - API客户端 (343行)
 - 订单管理器 (383行)
+
 - Bot对话处理器 (477行)
 - 数据模型 (106行)
+
 - 数据库表结构 (1个新表)
 
 ✅ **功能特性**
+
 - 时长能量购买（6.5万/13.1万，1小时有效）
 - 笔数套餐购买（弹性扣费，最低5 USDT）
+
 - 余额支付集成（自动扣费）
 - 订单状态追踪
+
 - 地址验证
 - API自动重试（主URL→备用URL）
 
 ✅ **配置和文档**
+
 - 环境变量配置（4个新配置）
 - 完整功能文档（docs/ENERGY.md，436行）
+
 - 集成测试脚本
 - README更新
 
@@ -40,58 +48,89 @@
 **服务商**: trxno.com / trxfast.com
 
 **已实现接口**:
+
 ```python
 ✅ get_account_info()      # 账号信息查询
+
 ✅ query_price()           # 价格查询
+
 ✅ buy_energy()            # 购买时长能量
+
 ✅ auto_buy_energy()       # 自动计算购买
+
 ✅ recycle_energy()        # 提前回收
+
 ✅ buy_package()           # 购买笔数套餐
+
 ✅ activate_address()      # 激活地址
+
 ✅ query_order()           # 订单查询
+
 ✅ query_logs()            # 日志查询
-```
+
+```text
 
 **特性**:
+
 - httpx异步客户端
 - 自动重试机制（主URL失败→备用URL）
+
 - 超时保护（30秒）
 - 完整状态码处理（10000-10011）
+
 - 错误日志记录
 
 ### 2. 订单管理 (src/energy/manager.py)
 
 **核心方法**:
+
 ```python
 ✅ create_hourly_order()   # 创建时长能量订单
+
 ✅ create_package_order()  # 创建笔数套餐订单
+
 ✅ process_order()         # 处理订单（调用API）
+
 ✅ pay_with_balance()      # 使用余额支付
+
 ✅ query_user_orders()     # 查询用户订单
+
 ✅ get_order()             # 获取订单详情
-```
+
+```text
 
 **特性**:
+
 - 订单状态机（PENDING→PROCESSING→COMPLETED/FAILED）
 - 余额扣费集成（wallet_manager）
+
 - 幂等性保证
 - 数据库持久化
+
 - 错误处理和回滚
 
 ### 3. Bot对话流程 (src/energy/handler.py)
 
 **对话状态** (7个状态):
+
 ```python
 STATE_SELECT_TYPE      # 选择类型（时长/笔数/闪兑）
+
 STATE_SELECT_PACKAGE   # 选择套餐（6.5万/13.1万）
+
 STATE_INPUT_ADDRESS    # 输入接收地址
+
 STATE_INPUT_COUNT      # 输入购买笔数
+
 STATE_INPUT_USDT       # 输入USDT金额
+
 STATE_CONFIRM          # 确认订单
-```
+
+```text
 
 **用户流程**:
-```
+
+```text
 /start 
 → 点击 "⚡ 能量兑换"
 → 选择类型
@@ -100,25 +139,36 @@ STATE_CONFIRM          # 确认订单
 → 自动扣费
 → API购买
 → 能量到账
-```
+
+```text
 
 ### 4. 数据模型 (src/energy/models.py)
 
 **枚举类型**:
+
 ```python
 EnergyOrderType      # hourly, package, flash
+
 EnergyPackage        # 65000, 131000
+
 EnergyOrderStatus    # PENDING, PROCESSING, COMPLETED, FAILED, EXPIRED
-```
+
+```text
 
 **数据模型**:
+
 ```python
 EnergyOrder          # 订单模型
+
 EnergyPriceConfig    # 价格配置
+
 APIAccountInfo       # 账号信息
+
 APIPriceQuery        # 价格查询
+
 APIOrderResponse     # 订单响应
-```
+
+```text
 
 ### 5. 数据库设计 (src/database.py)
 
@@ -143,6 +193,7 @@ APIOrderResponse     # 订单响应
 | completed_at | DATETIME | 完成时间 |
 
 **索引**:
+
 - `idx_energy_user_status` (user_id, status)
 - `idx_energy_order_type` (order_type)
 
@@ -155,12 +206,15 @@ APIOrderResponse     # 订单响应
 在 `.env` 中添加：
 
 ```bash
+
 # 能量API配置
+
 ENERGY_API_USERNAME=your_trxno_username
 ENERGY_API_PASSWORD=your_trxno_password
 ENERGY_API_BASE_URL=https://trxno.com
 ENERGY_API_BACKUP_URL=https://trxfast.com
-```
+
+```text
 
 ### 后台设置
 
@@ -168,13 +222,18 @@ ENERGY_API_BACKUP_URL=https://trxfast.com
 
 1. **出租功能**:
    - 出租地址: 填写TRX收款地址
+
    - 6.5万能量价格: 3 TRX
+
    - 13.1万能量价格: 6 TRX
+
    - 最大购买笔数: 20
 
 2. **笔数套餐**:
    - 套餐类型: 弹性笔数
+
    - USDT起售价: 5
+
    - 每笔价格: 3.6 TRX
 
 ---
@@ -184,17 +243,23 @@ ENERGY_API_BACKUP_URL=https://trxfast.com
 ### 1. 配置测试
 
 ```bash
+
 # 验证配置
+
 python3 scripts/validate_config.py
 
 # 快速测试
+
 python3 tests/test_energy_integration.py
-```
+
+```text
 
 ### 2. API连接测试
 
 ```bash
+
 # 测试账号查询
+
 python3 -c "
 import asyncio
 from src.energy.client import EnergyAPIClient
@@ -211,28 +276,38 @@ async def test():
 
 asyncio.run(test())
 "
-```
+
+```text
 
 ### 3. 完整功能测试
 
 ```bash
+
 # 1. 启动Bot
+
 ./scripts/start_bot.sh
 
 # 2. Telegram操作
+
 - 发送 /start
 - 点击 "⚡ 能量兑换"
+
 - 选择 "⚡ 时长能量"
 - 选择 "6.5万能量"
+
 - 输入笔数: 1
 - 输入地址: TXxx...xxx
+
 - 确认购买
 
 # 3. 验证结果
+
 - 检查余额扣费
 - 检查订单状态
+
 - 检查能量到账
-```
+
+```text
 
 ---
 
@@ -240,13 +315,18 @@ asyncio.run(test())
 
 ### 新增文件 (5个)
 
-```
+```text
 src/energy/
 ├── __init__.py         # 22 lines   - 模块导出
+
 ├── models.py           # 106 lines  - 数据模型
+
 ├── client.py           # 343 lines  - API客户端
+
 ├── manager.py          # 383 lines  - 订单管理器
+
 └── handler.py          # 477 lines  - Bot处理器
+
                         ─────────────
                         1,331 lines total
 
@@ -255,25 +335,33 @@ docs/
 
 tests/
 └── test_energy_integration.py  # 测试脚本
-```
+
+```text
 
 ### 修改文件 (6个)
 
-```
+```text
 src/bot.py              # +52 lines  - 注册能量处理器
+
 src/config.py           # +6 lines   - 新增配置项
+
 src/database.py         # +37 lines  - 新增energy_orders表
+
 src/menu/main_menu.py   # +4 lines   - 更新主菜单
+
 .env.example            # +6 lines   - 配置示例
+
 README.md               # +15 lines  - 使用说明
+
 STATUS.md               # 更新进度  - 5/7完成
-```
+
+```text
 
 ---
 
 ## 📊 代码统计
 
-```
+```text
 总代码行数:       1,869 lines
 ├── 核心模块:     1,331 lines
 ├── 数据库:         37 lines
@@ -281,44 +369,59 @@ STATUS.md               # 更新进度  - 5/7完成
 ├── 配置:           12 lines
 ├── 文档:          436 lines
 └── 测试:           1 script
-```
+
+```text
 
 ---
 
 ## 🎯 功能验证清单
 
 ### API对接
+
 - [x] 账号信息查询
 - [x] 价格查询
+
 - [x] 时长能量购买
 - [x] 笔数套餐购买
+
 - [x] 订单查询
 - [x] 自动重试机制
+
 - [x] 错误处理
 
 ### 订单管理
+
 - [x] 创建时长能量订单
 - [x] 创建笔数套餐订单
+
 - [x] 订单状态追踪
 - [x] 余额支付集成
+
 - [x] 数据库持久化
 - [x] 幂等性保证
 
 ### Bot交互
+
 - [x] 主菜单集成
 - [x] 对话流程（7状态）
+
 - [x] 类型选择界面
 - [x] 套餐选择界面
+
 - [x] 参数输入处理
 - [x] 地址验证
+
 - [x] 订单确认界面
 - [x] 支付成功提示
 
 ### 配置和文档
+
 - [x] 环境变量配置
 - [x] 配置验证脚本
+
 - [x] 完整功能文档
 - [x] API对接说明
+
 - [x] 使用流程说明
 - [x] 测试脚本
 
@@ -327,10 +430,13 @@ STATUS.md               # 更新进度  - 5/7完成
 ## 🔒 安全检查
 
 - [x] API密钥环境变量存储
+
 - [x] 地址格式验证
 - [x] 余额不足检查
+
 - [x] 并发扣费保护
 - [x] SQL注入防护（ORM）
+
 - [x] 订单幂等性
 - [x] 错误日志记录
 
@@ -339,8 +445,10 @@ STATUS.md               # 更新进度  - 5/7完成
 ## 📈 性能优化
 
 - [x] httpx异步客户端
+
 - [x] 数据库索引
 - [x] API连接池
+
 - [x] 自动重试机制
 - [x] 超时保护
 
@@ -366,7 +474,8 @@ Files: 11 files changed, 1869 insertions(+), 3 deletions(-)
 Commit: 31dbce9
 Message: docs(更新): 更新文档反映能量兑换功能完成状态
 Files: 2 files changed, 31 insertions(+), 5 deletions(-)
-```
+
+```text
 
 ---
 
@@ -375,33 +484,45 @@ Files: 2 files changed, 31 insertions(+), 5 deletions(-)
 ### 1. 配置环境
 
 ```bash
+
 # 编辑 .env
+
 nano .env
 
 # 添加能量API配置
+
 ENERGY_API_USERNAME=your_username
 ENERGY_API_PASSWORD=your_password
-```
+
+```text
 
 ### 2. 验证配置
 
 ```bash
+
 # 运行验证脚本
+
 python3 scripts/validate_config.py
 
 # 运行快速测试
+
 python3 tests/test_energy_integration.py
-```
+
+```text
 
 ### 3. 启动Bot
 
 ```bash
+
 # 使用启动脚本
+
 ./scripts/start_bot.sh
 
 # 或手动启动
+
 python3 -m src.bot
-```
+
+```text
 
 ### 4. 功能测试
 
@@ -415,8 +536,10 @@ python3 -m src.bot
 ## 📚 相关文档
 
 - [功能详细文档](docs/ENERGY.md) - 完整使用说明
+
 - [部署指南](DEPLOYMENT.md) - 部署和测试流程
 - [项目状态](STATUS.md) - 开发进度总结
+
 - [主文档](README.md) - 项目概览
 
 ---
@@ -438,18 +561,21 @@ python3 -m src.bot
 ## 💡 下一步建议
 
 ### 优先级 1: 测试和优化
+
 1. 使用真实Bot Token测试
 2. 小额测试支付流程
 3. 验证能量到账
 4. 收集用户反馈
 
 ### 优先级 2: 完善功能
+
 1. 实现闪兑功能
 2. 添加订单查询界面
 3. 添加能量使用记录
 4. 添加笔数余额查询
 
 ### 优先级 3: 监控和维护
+
 1. 添加监控指标
 2. 添加告警机制
 3. 优化错误处理

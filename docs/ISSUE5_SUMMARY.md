@@ -26,7 +26,7 @@
 ENERGY_RENT_ADDRESS=TYourEnergyRentAddress      # 时长能量收TRX地址
 ENERGY_PACKAGE_ADDRESS=TYourPackageAddress      # 笔数套餐收USDT地址
 ENERGY_FLASH_ADDRESS=TYourFlashExchangeAddr     # 闪兑收USDT地址
-```
+```text
 
 ### 3. Bot 主程序集成
 
@@ -95,7 +95,7 @@ ENERGY_FLASH_ADDRESS=TYourFlashExchangeAddr     # 闪兑收USDT地址
 
 ### 对话流程
 
-```
+```text
 用户点击"能量闪租" 
 → 选择类型（时长能量/笔数套餐/闪兑）
 → 选择套餐（6.5万/13.1万能量）
@@ -105,7 +105,7 @@ ENERGY_FLASH_ADDRESS=TYourFlashExchangeAddr     # 闪兑收USDT地址
 → 用户转账
 → 点击"我已转账"
 → 显示到账提示
-```
+```text
 
 ### 状态机
 
@@ -116,7 +116,7 @@ STATE_INPUT_ADDRESS = 3    # 输入地址
 STATE_INPUT_COUNT = 4      # 输入笔数
 STATE_SHOW_PAYMENT = 5     # 显示支付信息
 STATE_INPUT_USDT = 6       # 输入USDT金额（笔数套餐）
-```
+```text
 
 ### 关键函数
 
@@ -130,7 +130,7 @@ class EnergyDirectHandler:
     async def show_payment()         # 显示支付信息
     async def payment_done()         # 用户确认已转账
     async def cancel()               # 取消操作
-```
+```text
 
 ---
 
@@ -138,7 +138,7 @@ class EnergyDirectHandler:
 
 ### 能量兑换主菜单
 
-```
+```text
 ⚡ 能量兑换服务
 
 选择兑换类型：
@@ -160,11 +160,11 @@ class EnergyDirectHandler:
   • USDT 直接兑换能量
   • 支付方式：USDT 转账
   • 即时到账
-```
+```text
 
 ### 支付信息页面（能量闪租）
 
-```
+```text
 💳 支付信息
 
 ━━━━━━━━━━━━━━━━━━
@@ -188,7 +188,7 @@ TYourEnergyRentAddress
 💡 如有问题请联系客服
 
 [✅ 我已转账] [🔙 返回主菜单]
-```
+```text
 
 ---
 
@@ -207,7 +207,7 @@ ENERGY_PACKAGE_ADDRESS=TYourPackageAddress
 
 # 闪兑地址（收USDT）
 ENERGY_FLASH_ADDRESS=TYourFlashExchangeAddr
-```
+```text
 
 ### 2. 配置代理后台
 
@@ -233,13 +233,13 @@ python -m pytest tests/test_address_validator.py -v
 
 # 运行所有测试
 python -m pytest tests/ -v
-```
+```text
 
 ### 4. 启动 Bot
 
 ```bash
 ./scripts/start_bot.sh
-```
+```text
 
 ---
 
@@ -262,7 +262,7 @@ tests/test_energy_direct.py::TestEnergyDirectHandler::test_show_payment_address_
 tests/test_energy_direct.py::TestEnergyDirectHandler::test_payment_done PASSED
 
 ======================== 14 passed, 7 warnings in 0.69s =========================
-```
+```text
 
 ✅ **所有测试通过！**
 
@@ -287,12 +287,12 @@ tests/test_energy_direct.py::TestEnergyDirectHandler::test_payment_done PASSED
 
 ### 代码统计
 
-```
+```text
 新增代码:    ~1,400 行
 修改代码:    ~100 行
 测试覆盖:    14 个测试用例（100% 通过）
 文档更新:    3 个文件
-```
+```text
 
 ---
 
@@ -397,4 +397,6 @@ tests/test_energy_direct.py::TestEnergyDirectHandler::test_payment_done PASSED
 
 ---
 
-**Issue #5 状态：✅ 已完成**
+## Issue #5 状态
+
+✅ 已完成
