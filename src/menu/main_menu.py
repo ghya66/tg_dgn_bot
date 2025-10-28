@@ -66,17 +66,41 @@ class MainMenuHandler:
     async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         """处理 /start 命令"""
         from ..config import settings
+        from telegram import ReplyKeyboardMarkup, KeyboardButton
         
         user = update.effective_user
         
         # 使用配置的欢迎语
         text = settings.welcome_message.replace("{first_name}", user.first_name)
         
-        # 构建引流按钮
-        keyboard = MainMenuHandler._build_promotion_buttons()
-        reply_markup = InlineKeyboardMarkup(keyboard)
+        # 构建引流按钮（InlineKeyboard）
+        inline_keyboard = MainMenuHandler._build_promotion_buttons()
+        inline_markup = InlineKeyboardMarkup(inline_keyboard)
         
-        await update.message.reply_text(text, parse_mode="HTML", reply_markup=reply_markup)
+        # 构建底部键盘（ReplyKeyboard）
+        reply_keyboard = [
+            [KeyboardButton("💎 开通会员"), KeyboardButton("📍 指令问我")],
+            [KeyboardButton("⚡ 能量闪租"), KeyboardButton("📊 我的订单")],
+            [KeyboardButton("💰 充值"), KeyboardButton("� 个人中心")],
+        ]
+        reply_markup = ReplyKeyboardMarkup(
+            reply_keyboard,
+            resize_keyboard=True,
+            one_time_keyboard=False
+        )
+        
+        # 先发送带 InlineKeyboard 的消息
+        await update.message.reply_text(
+            text, 
+            parse_mode="HTML", 
+            reply_markup=inline_markup
+        )
+        
+        # 再设置底部键盘
+        await update.message.reply_text(
+            "📱 使用下方按钮快速访问功能：",
+            reply_markup=reply_markup
+        )
     
     @staticmethod
     async def show_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -120,22 +144,25 @@ class MainMenuHandler:
     @staticmethod
     async def handle_support(update: Update, context: ContextTypes.DEFAULT_TYPE):
         """处理联系客服"""
+        from ..config import settings
+        
         query = update.callback_query
-        await query.answer()
+        if query:
+            await query.answer()
         
         text = (
             "👨‍💼 <b>联系客服</b>\n\n"
-            "如需帮助，请通过以下方式联系我们：\n\n"
-            "📧 Telegram: @your_support_bot\n"
-            "🌐 网站: https://your-website.com\n"
-            "📮 邮箱: support@your-domain.com\n\n"
+            f"客服 Telegram: {settings.support_contact}\n\n"
             "工作时间: 24/7 全天候服务"
         )
         
         keyboard = [[InlineKeyboardButton("🔙 返回主菜单", callback_data="back_to_main")]]
         reply_markup = InlineKeyboardMarkup(keyboard)
         
-        await query.edit_message_text(text, parse_mode="HTML", reply_markup=reply_markup)
+        if query:
+            await query.edit_message_text(text, parse_mode="HTML", reply_markup=reply_markup)
+        else:
+            await update.message.reply_text(text, parse_mode="HTML", reply_markup=reply_markup)
     
     @staticmethod
     async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -163,3 +190,56 @@ class MainMenuHandler:
         reply_markup = InlineKeyboardMarkup(keyboard)
         
         await update.message.reply_text(text, parse_mode="HTML", reply_markup=reply_markup)
+    
+    @staticmethod
+    async def handle_keyboard_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """处理底部键盘按钮"""
+        text = update.message.text
+        
+        # 根据按钮文字路由到对应功能
+        if text == "💎 开通会员":
+            # 导入并调用 Premium 处理器
+            from ..premium.handler import PremiumHandler
+            # 模拟 /premium 命令
+            await update.message.reply_text(
+                "💎 <b>Premium 会员直充</b>\n\n"
+                "请使用 /premium 命令开始购买流程",
+                parse_mode="HTML"
+            )
+        
+        elif text == "📍 指令问我":
+            # 显示帮助信息
+            await MainMenuHandler.help_command(update, context)
+        
+        elif text == "⚡ 能量闪租":
+            # 导航到能量兑换
+            await update.message.reply_text(
+                "⚡ <b>能量闪租</b>\n\n"
+                "正在为您打开能量兑换功能...",
+                parse_mode="HTML"
+            )
+            # TODO: 触发能量兑换流程
+        
+        elif text == "📊 我的订单":
+            # 显示订单列表
+            await update.message.reply_text(
+                "📊 <b>我的订单</b>\n\n"
+                "正在查询您的订单记录...\n\n"
+                "功能开发中，敬请期待",
+                parse_mode="HTML"
+            )
+        
+        elif text == "💰 充值":
+            # 导航到个人中心充值
+            from ..wallet.profile_handler import ProfileHandler
+            # 模拟点击充值按钮
+            await update.message.reply_text(
+                "💰 <b>充值 USDT</b>\n\n"
+                "请使用 /profile 命令进入个人中心，然后选择\"充值 USDT\"",
+                parse_mode="HTML"
+            )
+        
+        elif text == "👤 个人中心":
+            # 导航到个人中心
+            from ..wallet.profile_handler import ProfileHandler
+            await ProfileHandler.profile_command(update, context)

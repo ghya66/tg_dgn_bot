@@ -77,6 +77,9 @@ class Settings(BaseSettings):
         '{"text": "👨‍💼 联系客服", "callback": "menu_support"}]'
     )
     
+    # 客服联系方式配置
+    support_contact: str = "@your_support_bot"  # 客服 Telegram 账号
+    
     class Config:
         env_file = ".env"
         case_sensitive = False

@@ -4,6 +4,7 @@ Telegram Bot 主程序入口
 """
 import asyncio
 import logging
+import re
 from telegram.ext import (
     Application,
     CommandHandler,
@@ -109,6 +110,22 @@ class TelegramBot:
         # === 基础命令 ===
         self.app.add_handler(CommandHandler("start", MainMenuHandler.start_command))
         self.app.add_handler(CommandHandler("help", MainMenuHandler.help_command))
+        
+        # === 底部键盘按钮处理 ===
+        # 使用 Regex 过滤器匹配特定按钮文字
+        from telegram.ext import filters as tg_filters
+        keyboard_buttons = [
+            "💎 开通会员",
+            "📍 指令问我", 
+            "⚡ 能量闪租",
+            "📊 我的订单",
+            "💰 充值",
+            "👤 个人中心"
+        ]
+        self.app.add_handler(MessageHandler(
+            tg_filters.Regex(f"^({'|'.join(map(re.escape, keyboard_buttons))})$"),
+            MainMenuHandler.handle_keyboard_button
+        ))
         
         # === Premium 会员直充 ===
         # 使用 ConversationHandler
@@ -237,10 +254,6 @@ class TelegramBot:
         
         commands = [
             BotCommand("start", "🏠 开始使用 / 主菜单"),
-            BotCommand("premium", "💎 购买 Premium 会员"),
-            BotCommand("profile", "👤 个人中心"),
-            BotCommand("help", "❓ 帮助信息"),
-            BotCommand("cancel", "❌ 取消当前操作"),
         ]
         
         await self.app.bot.set_my_commands(commands)
