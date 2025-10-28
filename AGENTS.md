@@ -6,8 +6,8 @@ Fixes #3
 Fixes #4
 
 ## Goal
-实现：Premium直充（USDT→giftPremiumSubscription）✅、能量兑换/闪租/限时(占位)、
-地址查询(30min/人限频)✅、个人中心(USDT余额充值 3位小数)✅、免费克隆、联系客服。
+实现：Premium直充（USDT→giftPremiumSubscription）✅、能量闪租/笔数套餐/闪兑（TRX/USDT直转）✅、
+地址查询(30min/人限频 免费)✅、个人中心(USDT余额充值 3位小数)✅、免费克隆、联系客服。
 
 ## Tech
 Python 3.11, python-telegram-bot v21, httpx, Pydantic Settings, SQLAlchemy 2.0。
@@ -38,13 +38,23 @@ Python 3.11, python-telegram-bot v21, httpx, Pydantic Settings, SQLAlchemy 2.0�
   - Telegram Bot /profile 命令：余额查询、充值流程、充值记录
   - 完整测试覆盖（16 wallet + 4 deposit_callback）
 
-- ✅ Issue #4: 地址查询功能
+- ✅ Issue #4: 地址查询功能（免费）
   - src/address_query/ 模块：地址验证、限频管理、浏览器链接
   - 波场地址验证（T开头34位Base58Check）
   - 30分钟/人限频（SQLite持久化，重启仍生效）
   - 区块链浏览器深链接（Tronscan/OKLink）
   - 支持 TRON API 查询（可选，优雅降级）
+  - **免费功能，无需扣费**
   - 完整测试覆盖（8 validator + 5 explorer + 9 rate_limit = 22 tests）
+
+- ✅ Issue #5: 能量服务（TRX/USDT 直转模式）
+  - src/energy/handler_direct.py 模块：直转支付流程
+  - 三种支付地址：能量闪租（TRX）、笔数套餐（USDT）、闪兑（USDT）
+  - 支付流程：用户选择→输入地址→显示代理地址→用户转账→自动到账
+  - 能量闪租：3/6 TRX，6秒到账，1小时有效期
+  - 笔数套餐：最低5 USDT，弹性扣费
+  - 闪兑：USDT 直接兑换能量
+  - 完整配置文档：docs/PAYMENT_MODES.md
 
 ## Test Summary
 
@@ -129,5 +139,12 @@ Python 3.11, python-telegram-bot v21, httpx, Pydantic Settings, SQLAlchemy 2.0�
 - SQLite 内存数据库 fixture（test_db）
 - 无 Redis 环境自动跳过集成测试
 - 统一使用 REDIS_URL 和 DATABASE_URL 环境变量
+
+**支付模式架构: ✅**
+
+- 三位小数后缀模式（Premium、余额充值）
+- TRX/USDT 直转模式（能量服务）
+- 免费功能（地址查询）
+- 完整文档：docs/PAYMENT_MODES.md
 
 CI 全绿✅；真实 Redis 集成测试；SQLite 持久化；完整覆盖；README & .env.example 完整。

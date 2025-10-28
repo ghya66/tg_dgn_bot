@@ -39,6 +39,11 @@ class Settings(BaseSettings):
     energy_api_base_url: str = "https://trxno.com"
     energy_api_backup_url: str = "https://trxfast.com"
     
+    # 能量代理地址（TRX直转模式）
+    energy_rent_address: str = ""  # 时长能量收TRX地址
+    energy_package_address: str = ""  # 笔数套餐收USDT地址
+    energy_flash_address: str = ""  # 闪兑收USDT地址
+    
     # 免费克隆功能文案
     free_clone_message: str = (
         "🎁 <b>免费克隆服务</b>\n\n"

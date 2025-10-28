@@ -35,7 +35,7 @@ class AddressQueryHandler:
             text = (
                 f"⏰ <b>查询限制</b>\n\n"
                 f"您的查询过于频繁，请在 <b>{remaining_minutes}</b> 分钟后再试。\n\n"
-                f"💡 限制：每用户 {settings.address_query_rate_limit_minutes} 分钟仅可查询 1 次"
+                f"💡 免费功能，每用户 {settings.address_query_rate_limit_minutes} 分钟可查询 1 次"
             )
             
             keyboard = [[InlineKeyboardButton("🔙 返回", callback_data="back_to_main")]]
@@ -49,12 +49,13 @@ class AddressQueryHandler:
         
         # 提示输入地址
         text = (
-            "🔍 <b>地址查询</b>\n\n"
+            "🔍 <b>地址查询（免费）</b>\n\n"
             "请发送要查询的波场(TRON)地址：\n\n"
             "• 地址以 <code>T</code> 开头\n"
             "• 长度为 34 位字符\n"
             "• 支持 Base58 字符集\n\n"
-            "示例: <code>TLyqzVGLV1srkB7dToTAEqgDSfPtXRJZYH</code>"
+            "示例: <code>TLyqzVGLV1srkB7dToTAEqgDSfPtXRJZYH</code>\n\n"
+            f"💡 免费功能，每 {settings.address_query_rate_limit_minutes} 分钟可查询 1 次"
         )
         
         keyboard = [[InlineKeyboardButton("❌ 取消", callback_data="cancel_query")]]
@@ -138,7 +139,7 @@ class AddressQueryHandler:
         else:
             text += "ℹ️ <i>API 暂时不可用，无法获取详细信息</i>\n\n"
         
-        text += f"⏰ 下次可查询时间: {settings.address_query_rate_limit_minutes} 分钟后"
+        text += f"🆓 免费查询 | ⏰ 限频: 每 {settings.address_query_rate_limit_minutes} 分钟 1 次"
         
         # 添加深链接按钮
         keyboard = [
