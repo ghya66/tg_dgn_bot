@@ -40,6 +40,7 @@ class ProfileHandler:
             [InlineKeyboardButton("💰 余额查询", callback_data="profile_balance")],
             [InlineKeyboardButton("💳 充值 USDT", callback_data="profile_deposit")],
             [InlineKeyboardButton("📝 充值记录", callback_data="profile_history")],
+            [InlineKeyboardButton("🔙 返回主菜单", callback_data="back_to_main")],
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         
@@ -50,6 +51,35 @@ class ProfileHandler:
         )
         
         await update.message.reply_text(text, parse_mode="HTML", reply_markup=reply_markup)
+    
+    @staticmethod
+    async def profile_command_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """处理从主菜单进入个人中心的回调"""
+        query = update.callback_query
+        await query.answer()
+        
+        user_id = update.effective_user.id
+        
+        # 获取余额
+        with WalletManager() as wallet:
+            balance = wallet.get_balance(user_id)
+        
+        # 构建键盘
+        keyboard = [
+            [InlineKeyboardButton("💰 余额查询", callback_data="profile_balance")],
+            [InlineKeyboardButton("💳 充值 USDT", callback_data="profile_deposit")],
+            [InlineKeyboardButton("📝 充值记录", callback_data="profile_history")],
+            [InlineKeyboardButton("🔙 返回主菜单", callback_data="back_to_main")],
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
+        text = (
+            "🏠 <b>个人中心</b>\n\n"
+            f"💰 当前余额: <code>{balance:.3f}</code> USDT\n\n"
+            "请选择操作："
+        )
+        
+        await query.edit_message_text(text, parse_mode="HTML", reply_markup=reply_markup)
     
     @staticmethod
     async def balance_query(update: Update, context: ContextTypes.DEFAULT_TYPE):

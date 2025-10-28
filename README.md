@@ -1,134 +1,264 @@
 # TG DGN Bot - Telegram 支付与会员系统
 
-## 项目概述
+[![CI](https://github.com/Jack123-UU/tg_dgn_bot/actions/workflows/ci.yml/badge.svg)](https://github.com/Jack123-UU/tg_dgn_bot/actions/workflows/ci.yml)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-本项目实现了完整的 Telegram Bot 支付系统，包括：
+## 📖 项目简介
 
-1. **TRC20 USDT 固定地址 + 3位小数唯一码收款**（Issue #1 ✅）
-2. **Premium 会员直充功能**（Issue #2 ✅）
+完整的 Telegram Bot 数字服务平台，提供 Premium 会员直充、USDT 余额管理、地址查询等功能。
 
-支持高并发、自动过期回收、安全的支付回调处理和自动交付。
+### ✨ 核心特性
+
+- 🔐 **TRC20 USDT 支付系统** - 固定地址 + 0.001-0.999 唯一后缀
+- 💎 **Premium 会员直充** - 自动交付 Telegram Premium
+- 💰 **余额管理系统** - 充值、扣费、记录查询
+- 🔍 **地址查询功能** - 波场地址验证 + 30分钟限频
+- 🎯 **模块化架构** - 清晰的代码组织和扩展性
 
 ## ✅ 功能实现状态
 
-### Issue #1: TRC20 USDT 支付系统 ✅
-
-- ✅ **统一收款地址配置** - 支持 `.env` 配置 `USDT_TRC20_RECEIVE_ADDR`
-- ✅ **唯一后缀生成** - 0.001-0.999 后缀池，支持并发 300+ 无冲突
-- ✅ **金额精确计算** - 使用整数化（×10^6）避免浮点误差
-- ✅ **HMAC签名验证** - 确保支付回调安全性
-- ✅ **订单状态管理** - PENDING→PAID 幂等更新
-- ✅ **自动过期回收** - Redis TTL 自动释放后缀
-- ✅ **完整单元测试** - 覆盖所有核心功能
-
-### Issue #2: Premium 会员直充 ✅
-
-- ✅ **收件人解析** - 支持 @username、t.me/ 链接、去重和规范化
-- ✅ **套餐管理** - 3/6/12 个月套餐配置
-- ✅ **对话流程** - 完整的 Telegram Bot 对话式购买流程
-- ✅ **自动交付** - 支付完成后自动调用 Premium 交付服务
-- ✅ **状态跟踪** - PENDING→PAID→DELIVERED/PARTIAL 状态管理
-- ✅ **错误处理** - 部分失败时记录详细错误信息
-- ✅ **测试覆盖** - 收件人解析、订单创建、交付逻辑测试
+| 功能 | 状态 | Issue |
+|------|------|-------|
+| TRC20 USDT 支付系统 | ✅ | [#1](https://github.com/Jack123-UU/tg_dgn_bot/issues/1) |
+| Premium 会员直充 | ✅ | [#2](https://github.com/Jack123-UU/tg_dgn_bot/issues/2) |
+| 个人中心余额充值 | ✅ | [#3](https://github.com/Jack123-UU/tg_dgn_bot/issues/3) |
+| 地址查询 + 限频 | ✅ | [#4](https://github.com/Jack123-UU/tg_dgn_bot/issues/4) |
+| 能量兑换/闪租 | 🔲 | - |
+| 免费克隆 | 🔲 | - |
+| 联系客服 | 🔲 | - |
 
 ## 📁 项目结构
 
 ```
 tg_dgn_bot/
 ├── src/
-│   ├── payments/                    # 支付模块（Issue #1）
+│   ├── bot.py                      # 🤖 Bot 主程序入口
+│   ├── menu/                       # 主菜单模块
+│   │   └── main_menu.py            # /start 命令和主菜单
+│   ├── payments/                   # 支付模块（Issue #1）
 │   │   ├── suffix_manager.py       # 后缀管理器 (0.001-0.999池)
 │   │   ├── amount_calculator.py    # 金额计算器 (整数化精度)
-│   │   └── order.py               # 订单状态管理
-│   ├── webhook/                     # Webhook模块（Issue #1）
-│   │   └── trc20_handler.py        # TRC20回调处理器（支持Premium自动交付）
-│   ├── premium/                     # Premium模块（Issue #2）
-│   │   ├── handler.py              # Telegram Bot 对话处理器
+│   │   └── order.py                # 订单状态管理
+│   ├── premium/                    # Premium 模块（Issue #2）
+│   │   ├── handler.py              # 对话处理器
 │   │   ├── recipient_parser.py     # 收件人解析器
-│   │   └── delivery.py             # Premium 交付服务
+│   │   └── delivery.py             # 交付服务
+│   ├── wallet/                     # 钱包模块（Issue #3）
+│   │   ├── wallet_manager.py       # 余额管理器
+│   │   └── profile_handler.py      # 个人中心处理器
+│   ├── address_query/              # 地址查询模块（Issue #4）
+│   │   ├── validator.py            # 地址验证器
+│   │   ├── explorer.py             # 浏览器链接生成
+│   │   └── handler.py              # 查询处理器
+│   ├── webhook/                    # Webhook 模块
+│   │   └── trc20_handler.py        # TRC20 回调处理器
 │   ├── config.py                   # 配置管理
-│   ├── models.py                   # 数据模型（支持Premium订单类型）
-│   ├── signature.py                # HMAC签名验证
-│   └── webhook.py                  # FastAPI Web服务
-├── tests/                          # 测试模块
-│   ├── test_suffix_generator.py    # 后缀生成器测试
-│   ├── test_payment_processor.py   # 支付处理测试
-│   ├── test_amount_calculator.py   # 金额计算测试
-│   ├── test_trc20_handler.py      # TRC20处理器测试
-│   ├── test_signature.py          # 签名验证测试
-│   ├── test_integration.py        # 集成测试
-│   ├── test_recipient_parser.py   # 收件人解析测试（Premium）
-│   ├── test_premium_order.py      # Premium订单测试
-│   └── test_premium_delivery.py   # Premium交付测试
-├── .env.example                    # 环境变量示例
+│   ├── database.py                 # 数据库模型（SQLAlchemy）
+│   ├── models.py                   # Pydantic 模型
+│   └── signature.py                # HMAC 签名验证
+├── scripts/                        # 🛠️ 管理脚本
+│   ├── start_bot.sh                # 启动 Bot
+│   ├── stop_bot.sh                 # 停止 Bot
+│   └── validate_config.py          # 配置验证工具
+├── tests/                          # 🧪 测试套件（142 测试）
+│   ├── test_*.py                   # 单元测试
+│   └── conftest.py                 # 测试配置
+├── .env.example                    # 环境变量模板
 ├── requirements.txt                # 项目依赖
-└── verify_functionality.py        # 功能验证脚本
+└── README.md                       # 本文档
 ```
 
 ## 🚀 快速开始
 
-### 1. 环境配置
+### 1. 环境要求
+
+- Python 3.11+
+- Redis 7.0+
+- SQLite 3 (或其他 SQLAlchemy 支持的数据库)
+
+### 2. 配置环境
 
 ```bash
-# 复制环境变量配置
-cp .env.example .env
+# 1. 克隆项目
+git clone https://github.com/Jack123-UU/tg_dgn_bot.git
+cd tg_dgn_bot
 
-# 编辑配置文件
-vim .env
+# 2. 安装依赖
+pip install -r requirements.txt
+
+# 3. 配置环境变量
+cp .env.example .env
+vim .env  # 编辑配置
 ```
 
-必要配置项：
+### 3. 必需配置项
+
+编辑 `.env` 文件：
 
 ```bash
-BOT_TOKEN=your_telegram_bot_token
-USDT_TRC20_RECEIVE_ADDR=TYourUSDTReceiveAddress  # 波场USDT收款地址
-WEBHOOK_SECRET=your_webhook_secret_key           # HMAC签名密钥
-REDIS_HOST=localhost                             # Redis服务器
+# Telegram Bot
+BOT_TOKEN=123456789:ABCdefGHIjklMNOpqrsTUVwxyz
+
+# USDT TRC20 Payment
+USDT_TRC20_RECEIVE_ADDR=TYourUSDTReceiveAddress  # 波场收款地址
+
+# HMAC Signature
+WEBHOOK_SECRET=your_webhook_secret_key            # 签名密钥
+
+# Redis
+REDIS_HOST=localhost
 REDIS_PORT=6379
 REDIS_DB=0
-ORDER_TIMEOUT_MINUTES=30                         # 订单过期时间
+
+# 订单设置
+ORDER_TIMEOUT_MINUTES=30
 ```
 
-### 2. 安装依赖
+### 4. 验证配置
 
 ```bash
-pip install -r requirements.txt
+python3 scripts/validate_config.py
 ```
 
-### 3. 启动服务
+### 5. 启动 Bot
 
 ```bash
-# 启动 FastAPI Web 服务
-python -m src.webhook
+# 方式 1: 使用启动脚本（推荐）
+./scripts/start_bot.sh
 
-# 服务将在 http://localhost:8000 启动
+# 方式 2: 直接运行
+python3 -m src.bot
+
+# 停止 Bot
+./scripts/stop_bot.sh
 ```
 
-### 4. 运行测试
+## 🎯 Bot 使用指南
+
+### 用户命令
+
+| 命令 | 说明 |
+|------|------|
+| `/start` | 显示主菜单 |
+| `/help` | 显示帮助信息 |
+| `/premium` | 购买 Premium 会员 |
+| `/profile` | 个人中心（余额管理）|
+| `/cancel` | 取消当前操作 |
+
+### 功能流程
+
+#### 💎 Premium 直充
+1. 点击 "Premium直充" 或发送 `/premium`
+2. 选择套餐（3/6/12 个月）
+3. 输入收件人（支持 @username 或 t.me/ 链接）
+4. 确认订单并支付 USDT
+5. 自动交付到收件人账户
+
+#### 💰 余额充值
+1. 点击 "个人中心" 或发送 `/profile`
+2. 选择 "充值 USDT"
+3. 输入充值金额
+4. 转账到指定地址（精确到 3 位小数）
+5. 2-5 分钟自动到账
+
+#### 🔍 地址查询
+1. 点击 "地址查询"
+2. 输入波场地址（T 开头 34 位）
+3. 查看地址信息
+4. 点击按钮访问区块链浏览器
+## 🧪 测试
+
+### 运行测试
 
 ```bash
-# 运行功能验证
-python verify_functionality.py
-
-# 运行完整测试套件（需要Redis服务）
+# 运行完整测试套件
 python -m pytest tests/ -v
 
-# 运行核心测试（跳过需要Redis的集成测试）
+# 跳过 Redis 集成测试（仅核心测试）
 python -m pytest tests/ -m "not redis" -v
 
 # 运行特定模块测试
-python -m pytest tests/test_amount_calculator.py -v
-python -m pytest tests/test_recipient_parser.py -v
-python -m pytest tests/test_suffix_pool_redis.py -v  # Redis集成测试
+python -m pytest tests/test_address_validator.py -v
+python -m pytest tests/test_wallet.py -v
 ```
 
-**测试覆盖：**
+### 测试覆盖
 
-- ✅ 80个核心功能测试（可独立运行）
-- ✅ 21个 Redis 集成测试（需要Redis服务）
-  - 8个原有集成测试
-  - 13个新增后缀池真实测试（并发、TTL、租期延长等）
-- ✅ 总计 **101 个测试**，覆盖所有关键功能
+- **总测试数**: 142 个
+  - 80 个核心功能测试（无需 Redis/Database）
+  - 20 个钱包模块测试（SQLite 内存数据库）
+  - 22 个地址查询测试（SQLite 内存数据库）
+  - 20 个 Redis 集成测试
+
+## 🔧 技术栈
+
+| 组件 | 技术 |
+|------|------|
+| 语言 | Python 3.11+ |
+| Bot 框架 | python-telegram-bot v21 |
+| 异步 HTTP | httpx |
+| 配置管理 | Pydantic Settings |
+| 数据库 | SQLAlchemy 2.0 + SQLite |
+| 缓存 | Redis 7.0+ |
+| 测试 | pytest + pytest-asyncio |
+| CI/CD | GitHub Actions |
+
+## 📊 数据库设计
+
+### SQLite 表结构
+
+```sql
+-- 用户表
+CREATE TABLE users (
+    user_id INTEGER PRIMARY KEY,
+    username TEXT,
+    balance_micro_usdt INTEGER DEFAULT 0,
+    created_at DATETIME,
+    updated_at DATETIME
+);
+
+-- 充值订单表
+CREATE TABLE deposit_orders (
+    order_id TEXT PRIMARY KEY,
+    user_id INTEGER,
+    base_amount REAL,
+    unique_suffix INTEGER,
+    total_amount REAL,
+    amount_micro_usdt INTEGER,
+    status TEXT,  -- PENDING, PAID, EXPIRED
+    tx_hash TEXT,
+    created_at DATETIME,
+    paid_at DATETIME,
+    expires_at DATETIME
+);
+
+-- 扣费记录表
+CREATE TABLE debit_records (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER,
+    amount_micro_usdt INTEGER,
+    order_type TEXT,
+    related_order_id TEXT,
+    created_at DATETIME
+);
+
+-- 地址查询限频表
+CREATE TABLE address_query_logs (
+    user_id INTEGER PRIMARY KEY,
+    last_query_at DATETIME,
+    query_count INTEGER DEFAULT 1
+);
+```
+
+## 🔐 安全特性
+
+- ✅ **HMAC-SHA256 签名验证** - 防止回调伪造
+- ✅ **订单幂等性保证** - 防止重复支付
+- ✅ **金额整数化计算** - 避免浮点误差
+- ✅ **并发保护** - 余额扣费使用行级锁
+- ✅ **限频机制** - 30 分钟/人查询限制
+- ✅ **自动过期回收** - Redis TTL 管理订单生命周期
 
 **CI/CD：**
 
