@@ -182,7 +182,7 @@ class TelegramBot:
         
         # === 即将上线功能 ===
         self.app.add_handler(CallbackQueryHandler(
-            MainMenuHandler.handle_coming_soon,
+            MainMenuHandler.handle_free_clone,
             pattern=r'^menu_clone$'
         ))
         

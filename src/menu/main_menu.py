@@ -77,25 +77,20 @@ class MainMenuHandler:
         await query.edit_message_text(text, parse_mode="HTML", reply_markup=reply_markup)
     
     @staticmethod
-    async def handle_coming_soon(update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """处理即将上线的功能"""
+    async def handle_free_clone(update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """处理免费克隆功能"""
+        from ..config import settings
+        
         query = update.callback_query
         await query.answer()
         
-        # 占位功能（仅克隆）
-        feature_names = {
-            "menu_clone": "🎁 免费克隆",
-        }
+        # 从配置中读取管理员设置的文案
+        text = settings.free_clone_message
         
-        feature_name = feature_names.get(query.data, "该功能")
-        
-        text = (
-            f"🚧 <b>{feature_name}</b>\n\n"
-            "该功能正在开发中，敬请期待！\n\n"
-            "如有任何问题，请联系客服。"
-        )
-        
-        keyboard = [[InlineKeyboardButton("🔙 返回主菜单", callback_data="back_to_main")]]
+        keyboard = [
+            [InlineKeyboardButton("👨‍💼 联系客服", callback_data="menu_support")],
+            [InlineKeyboardButton("🔙 返回主菜单", callback_data="back_to_main")]
+        ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         
         await query.edit_message_text(text, parse_mode="HTML", reply_markup=reply_markup)
