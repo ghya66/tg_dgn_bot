@@ -15,7 +15,7 @@ from loguru import logger
 
 from .manager import EnergyOrderManager
 from .models import EnergyPackage, EnergyOrderType
-from ..address_query.validator import is_valid_tron_address
+from ..address_query.validator import AddressValidator
 
 
 # 对话状态
@@ -240,10 +240,11 @@ class EnergyHandler:
         address = message.text.strip()
         
         # 验证地址
-        if not is_valid_tron_address(address):
+        is_valid, error_msg = AddressValidator.validate(address)
+        if not is_valid:
             await message.reply_text(
-                "❌ 无效的波场地址，请重新输入：\n\n"
-                "地址必须以T开头，长度为34位"
+                f"❌ {error_msg}\n\n"
+                "请重新输入正确的波场地址"
             )
             return STATE_INPUT_ADDRESS
         
