@@ -3,10 +3,11 @@
 Fixes #1  
 Fixes #2  
 Fixes #3
+Fixes #4
 
 ## Goal
 实现：Premium直充（USDT→giftPremiumSubscription）✅、能量兑换/闪租/限时(占位)、
-地址查询(30min/人限频)、个人中心(USDT余额充值 3位小数)✅、免费克隆、联系客服。
+地址查询(30min/人限频)✅、个人中心(USDT余额充值 3位小数)✅、免费克隆、联系客服。
 
 ## Tech
 Python 3.11, python-telegram-bot v21, httpx, Pydantic Settings, SQLAlchemy 2.0。
@@ -37,9 +38,18 @@ Python 3.11, python-telegram-bot v21, httpx, Pydantic Settings, SQLAlchemy 2.0�
   - Telegram Bot /profile 命令：余额查询、充值流程、充值记录
   - 完整测试覆盖（16 wallet + 4 deposit_callback）
 
+- ✅ Issue #4: 地址查询功能
+  - src/address_query/ 模块：地址验证、限频管理、浏览器链接
+  - 波场地址验证（T开头34位Base58Check）
+  - 30分钟/人限频（SQLite持久化，重启仍生效）
+  - 区块链浏览器深链接（Tronscan/OKLink）
+  - 支持 TRON API 查询（可选，优雅降级）
+  - 完整测试覆盖（8 validator + 5 explorer + 9 rate_limit = 22 tests）
+
 ## Test Summary
 
 **核心功能测试（无需Redis/Database）: ✅ 80/80 通过**
+
 - AmountCalculator: 10/10 通过
 - PaymentProcessor: 9/9 通过  
 - RecipientParser: 12/12 通过
@@ -50,6 +60,7 @@ Python 3.11, python-telegram-bot v21, httpx, Pydantic Settings, SQLAlchemy 2.0�
 - PremiumDelivery: 8/8 通过
 
 **钱包模块测试（SQLite内存数据库）: ✅ 20/20 通过**
+
 - WalletManager: 16/16 通过
   - 用户创建、余额查询
   - 充值订单创建
@@ -63,7 +74,35 @@ Python 3.11, python-telegram-bot v21, httpx, Pydantic Settings, SQLAlchemy 2.0�
   - deposit订单类型路由
   - 幂等性、金额匹配、订单查询
 
+**地址查询测试（SQLite内存数据库）: ✅ 22/22 通过**
+
+- AddressValidator: 8/8 通过
+  - 有效地址验证（Tronscan地址格式）
+  - 长度错误检测（太短/太长）
+  - 前缀错误检测（非T开头）
+  - 无效字符检测（Base58规则）
+  - 空地址拒绝
+  - 特殊字符拒绝
+  - 以太坊/比特币地址拒绝
+- ExplorerLinks: 5/5 通过
+  - Tronscan链接生成
+  - OKLink链接生成
+  - 默认Tronscan
+  - 大小写不敏感
+  - 链接结构正确性
+- RateLimit: 9/9 通过
+  - 首次查询允许
+  - 限频期内拒绝
+  - 限频期后允许
+  - 查询记录创建
+  - 查询记录更新
+  - 重启后持久化
+  - 多用户独立
+  - 并发保护
+  - 边界情况处理
+
 **Redis 集成测试（标记 @pytest.mark.redis）: 20 个**
+
 - 8 个原有集成测试（payment_processor, integration, premium_delivery）
 - 12 个新增后缀池真实测试（test_suffix_pool_redis.py）
   - 基本分配/释放/重用
@@ -76,13 +115,15 @@ Python 3.11, python-telegram-bot v21, httpx, Pydantic Settings, SQLAlchemy 2.0�
 - CI 中使用真实 Redis 7 服务运行全部测试
 
 **CI/CD 配置: ✅**
+
 - GitHub Actions 使用 `redis:7-alpine` service
 - 健康检查 + 连接等待确保 Redis 就绪
-- 运行全部 120 个测试（80 核心 + 20 钱包 + 20 Redis）
+- 运行全部 142 个测试（80 核心 + 20 钱包 + 22 地址查询 + 20 Redis）
 - Python 3.11 & 3.12 矩阵测试
 - 依赖：redis>=5.0, sqlalchemy>=2.0, pytest-asyncio>=0.23, pytest-timeout>=2.3
 
 **测试固件增强: ✅**
+
 - Session 级别 `redis_client` fixture
 - 自动 `clean_redis` 前后清理（flushdb）
 - SQLite 内存数据库 fixture（test_db）

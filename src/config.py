@@ -25,6 +25,14 @@ class Settings(BaseSettings):
     order_timeout_minutes: int = 30
     base_price_decimal_places: int = 3
     
+    # TRON API (可选)
+    tron_api_url: str = ""
+    tron_api_key: str = ""
+    tron_explorer: str = "tronscan"  # tronscan | oklink
+    
+    # 地址查询限频（分钟）
+    address_query_rate_limit_minutes: int = 30
+    
     class Config:
         env_file = ".env"
         case_sensitive = False

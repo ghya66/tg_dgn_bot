@@ -93,6 +93,15 @@ class SuffixAllocation(Base):
     expires_at = Column(DateTime, nullable=True)  # 过期时间
 
 
+class AddressQueryLog(Base):
+    """地址查询限频记录表"""
+    __tablename__ = "address_query_logs"
+    
+    user_id = Column(Integer, primary_key=True, index=True)
+    last_query_at = Column(DateTime, nullable=False)  # 最后查询时间
+    query_count = Column(Integer, default=1, nullable=False)  # 查询次数
+
+
 def init_db():
     """初始化数据库（创建所有表）"""
     Base.metadata.create_all(bind=engine)
