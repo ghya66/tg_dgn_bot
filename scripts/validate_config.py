@@ -5,7 +5,12 @@
 """
 import sys
 import os
+from pathlib import Path
 from typing import List, Tuple
+
+# 设置 PYTHONPATH 以便导入 src 模块
+ROOT_DIR = Path(__file__).parent.parent
+sys.path.insert(0, str(ROOT_DIR))
 
 
 def check_env_file() -> bool:
