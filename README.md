@@ -24,7 +24,7 @@
 | Premium 会员直充 | ✅ | [#2](https://github.com/Jack123-UU/tg_dgn_bot/issues/2) |
 | 个人中心余额充值 | ✅ | [#3](https://github.com/Jack123-UU/tg_dgn_bot/issues/3) |
 | 地址查询 + 限频 | ✅ | [#4](https://github.com/Jack123-UU/tg_dgn_bot/issues/4) |
-| 能量兑换/闪租 | 🔲 | - |
+| 能量兑换/笔数套餐 | ✅ | [#5](https://github.com/Jack123-UU/tg_dgn_bot/issues/5) |
 | 免费克隆 | 🔲 | - |
 | 联系客服 | 🔲 | - |
 
@@ -51,6 +51,11 @@ tg_dgn_bot/
 │   │   ├── validator.py            # 地址验证器
 │   │   ├── explorer.py             # 浏览器链接生成
 │   │   └── handler.py              # 查询处理器
+│   ├── energy/                     # 能量兑换模块（Issue #5）
+│   │   ├── client.py               # API客户端 (trxno.com)
+│   │   ├── manager.py              # 订单管理器
+│   │   ├── handler.py              # 对话处理器
+│   │   └── models.py               # 数据模型
 │   ├── webhook/                    # Webhook 模块
 │   │   └── trc20_handler.py        # TRC20 回调处理器
 │   ├── config.py                   # 配置管理
@@ -167,6 +172,19 @@ python3 -m src.bot
 2. 输入波场地址（T 开头 34 位）
 3. 查看地址信息
 4. 点击按钮访问区块链浏览器
+
+#### ⚡ 能量兑换
+1. 点击 "能量兑换"
+2. 选择类型：
+   - **时长能量**：6.5万/13.1万能量，1小时有效
+   - **笔数套餐**：弹性扣费，最低5 USDT
+3. 输入购买笔数/金额
+4. 输入接收地址
+5. 确认订单并支付
+6. 能量自动到账
+
+详细使用说明请参考：[docs/ENERGY.md](docs/ENERGY.md)
+
 ## 🧪 测试
 
 ### 运行测试
