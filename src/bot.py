@@ -120,7 +120,8 @@ class TelegramBot:
             "⚡ 能量闪租",
             "📊 我的订单",
             "💰 充值",
-            "👤 个人中心"
+            "👤 个人中心",
+            "📊 实时U价"
         ]
         self.app.add_handler(MessageHandler(
             tg_filters.Regex(f"^({'|'.join(map(re.escape, keyboard_buttons))})$"),
@@ -207,6 +208,12 @@ class TelegramBot:
         self.app.add_handler(CallbackQueryHandler(
             MainMenuHandler.handle_support,
             pattern=r'^menu_support$'
+        ))
+        
+        # === 实时U价 ===
+        self.app.add_handler(CallbackQueryHandler(
+            MainMenuHandler.refresh_usdt_price,
+            pattern=r'^refresh_usdt_price$'
         ))
         
         # === 通用回调：返回主菜单 ===

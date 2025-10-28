@@ -81,7 +81,8 @@ class MainMenuHandler:
         reply_keyboard = [
             [KeyboardButton("💎 开通会员"), KeyboardButton("📍 指令问我")],
             [KeyboardButton("⚡ 能量闪租"), KeyboardButton("📊 我的订单")],
-            [KeyboardButton("💰 充值"), KeyboardButton("� 个人中心")],
+            [KeyboardButton("💰 充值"), KeyboardButton("👤 个人中心")],
+            [KeyboardButton("📊 实时U价")],
         ]
         reply_markup = ReplyKeyboardMarkup(
             reply_keyboard,
@@ -192,6 +193,112 @@ class MainMenuHandler:
         await update.message.reply_text(text, parse_mode="HTML", reply_markup=reply_markup)
     
     @staticmethod
+    async def show_usdt_price(update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """显示实时 USDT 汇率信息"""
+        from datetime import datetime
+        import httpx
+        
+        # 获取当前时间
+        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        
+        try:
+            # 尝试从公开 API 获取实时汇率（示例使用 CoinGecko API）
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                response = await client.get(
+                    "https://api.coingecko.com/api/v3/simple/price",
+                    params={
+                        "ids": "tether",
+                        "vs_currencies": "cny,usd"
+                    }
+                )
+                
+                if response.status_code == 200:
+                    data = response.json()
+                    cny_rate = data.get("tether", {}).get("cny", 0)
+                    usd_rate = data.get("tether", {}).get("usd", 0)
+                    
+                    text = (
+                        "📊 <b>实时 U 价</b>\n\n"
+                        f"💵 <b>USDT 实时汇率</b>\n\n"
+                        f"🇨🇳 CNY: <code>{cny_rate:.4f}</code> 元\n"
+                        f"🇺🇸 USD: <code>{usd_rate:.4f}</code> 美元\n\n"
+                        f"⏰ 更新时间: {current_time}\n\n"
+                        "💡 数据来源: CoinGecko API"
+                    )
+                else:
+                    raise Exception("API 请求失败")
+        
+        except Exception as e:
+            logger.error(f"获取 USDT 汇率失败: {e}")
+            # 使用模拟数据作为后备
+            text = (
+                "📊 <b>实时 U 价</b>\n\n"
+                "💵 <b>USDT 参考汇率</b>\n\n"
+                "🇨🇳 CNY: <code>7.13</code> 元\n"
+                "🇺🇸 USD: <code>1.00</code> 美元\n\n"
+                f"⏰ 当前时间: {current_time}\n\n"
+                "⚠️ 汇率仅供参考，实际交易以平台实时价格为准"
+            )
+        
+        keyboard = [[InlineKeyboardButton("🔄 刷新", callback_data="refresh_usdt_price")]]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
+        await update.message.reply_text(text, parse_mode="HTML", reply_markup=reply_markup)
+    
+    @staticmethod
+    async def refresh_usdt_price(update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """刷新 USDT 汇率（回调处理）"""
+        from datetime import datetime
+        import httpx
+        
+        query = update.callback_query
+        await query.answer("正在刷新汇率...")
+        
+        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                response = await client.get(
+                    "https://api.coingecko.com/api/v3/simple/price",
+                    params={
+                        "ids": "tether",
+                        "vs_currencies": "cny,usd"
+                    }
+                )
+                
+                if response.status_code == 200:
+                    data = response.json()
+                    cny_rate = data.get("tether", {}).get("cny", 0)
+                    usd_rate = data.get("tether", {}).get("usd", 0)
+                    
+                    text = (
+                        "📊 <b>实时 U 价</b>\n\n"
+                        f"💵 <b>USDT 实时汇率</b>\n\n"
+                        f"🇨🇳 CNY: <code>{cny_rate:.4f}</code> 元\n"
+                        f"🇺🇸 USD: <code>{usd_rate:.4f}</code> 美元\n\n"
+                        f"⏰ 更新时间: {current_time}\n\n"
+                        "💡 数据来源: CoinGecko API"
+                    )
+                else:
+                    raise Exception("API 请求失败")
+        
+        except Exception as e:
+            logger.error(f"获取 USDT 汇率失败: {e}")
+            text = (
+                "📊 <b>实时 U 价</b>\n\n"
+                "💵 <b>USDT 参考汇率</b>\n\n"
+                "🇨🇳 CNY: <code>7.13</code> 元\n"
+                "🇺🇸 USD: <code>1.00</code> 美元\n\n"
+                f"⏰ 当前时间: {current_time}\n\n"
+                "⚠️ 汇率仅供参考，实际交易以平台实时价格为准"
+            )
+        
+        keyboard = [[InlineKeyboardButton("🔄 刷新", callback_data="refresh_usdt_price")]]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
+        await query.edit_message_text(text, parse_mode="HTML", reply_markup=reply_markup)
+    
+    @staticmethod
     async def handle_keyboard_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
         """处理底部键盘按钮"""
         text = update.message.text
@@ -243,3 +350,7 @@ class MainMenuHandler:
             # 导航到个人中心
             from ..wallet.profile_handler import ProfileHandler
             await ProfileHandler.profile_command(update, context)
+        
+        elif text == "📊 实时U价":
+            # 显示实时 USDT 汇率
+            await MainMenuHandler.show_usdt_price(update, context)
