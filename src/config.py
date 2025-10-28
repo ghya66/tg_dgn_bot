@@ -52,6 +52,31 @@ class Settings(BaseSettings):
         "👨‍💼 客服将为您提供详细的使用指南和技术支持。"
     )
     
+    # 欢迎语配置
+    welcome_message: str = (
+        "👋 欢迎使用 TG DGN Bot！\n\n"
+        "🤖 <b>你的 Telegram 数字服务助手</b>\n\n"
+        "我们提供以下服务：\n"
+        "💎 Premium 会员直充\n"
+        "⚡ TRON 能量兑换\n"
+        "🔍 波场地址查询\n"
+        "🎁 免费克隆服务\n"
+        "💰 USDT 余额管理\n\n"
+        "请选择下方功能开始使用 👇"
+    )
+    
+    # 引流按钮配置（支持多行，每行最多2个按钮）
+    # 格式：[{"text": "按钮文字", "url": "链接"}, ...]
+    # url 可选，不填则为 callback_data
+    promotion_buttons: str = (
+        '[{"text": "💎 开通会员", "callback": "menu_premium"},'
+        '{"text": "💰 查看价格", "callback": "menu_profile"}],'
+        '[{"text": "⚡ 能量兑换", "callback": "menu_energy"},'
+        '{"text": "🔍 地址查询", "callback": "menu_address_query"}],'
+        '[{"text": "🎁 免费克隆", "callback": "menu_clone"},'
+        '{"text": "👨‍💼 联系客服", "callback": "menu_support"}]'
+    )
+    
     class Config:
         env_file = ".env"
         case_sensitive = False

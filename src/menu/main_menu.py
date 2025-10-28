@@ -2,6 +2,7 @@
 主菜单处理器
 """
 import logging
+import json
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
 
@@ -12,37 +13,67 @@ class MainMenuHandler:
     """主菜单处理器"""
     
     @staticmethod
+    def _build_promotion_buttons():
+        """构建引流按钮（从配置读取）"""
+        from ..config import settings
+        
+        try:
+            # 解析配置的按钮
+            buttons_config = settings.promotion_buttons
+            # 移除换行和多余空格
+            buttons_config = buttons_config.replace('\n', '').replace(' ', '')
+            # 解析为列表
+            button_rows = eval(f'[{buttons_config}]')
+            
+            keyboard = []
+            for row in button_rows:
+                button_row = []
+                for btn in row:
+                    text = btn.get('text', '')
+                    url = btn.get('url')
+                    callback = btn.get('callback')
+                    
+                    if url:
+                        # 外部链接按钮
+                        button_row.append(InlineKeyboardButton(text, url=url))
+                    elif callback:
+                        # 回调按钮
+                        button_row.append(InlineKeyboardButton(text, callback_data=callback))
+                
+                if button_row:
+                    keyboard.append(button_row)
+            
+            return keyboard
+        except Exception as e:
+            logger.error(f"解析引流按钮配置失败: {e}")
+            # 返回默认按钮
+            return [
+                [
+                    InlineKeyboardButton("💎 Premium直充", callback_data="menu_premium"),
+                    InlineKeyboardButton("🏠 个人中心", callback_data="menu_profile")
+                ],
+                [
+                    InlineKeyboardButton("🔍 地址查询", callback_data="menu_address_query"),
+                    InlineKeyboardButton("⚡ 能量兑换", callback_data="menu_energy")
+                ],
+                [
+                    InlineKeyboardButton("🎁 免费克隆", callback_data="menu_clone"),
+                    InlineKeyboardButton("👨‍💼 联系客服", callback_data="menu_support")
+                ]
+            ]
+    
+    @staticmethod
     async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         """处理 /start 命令"""
+        from ..config import settings
+        
         user = update.effective_user
         
-        text = (
-            f"👋 欢迎，{user.first_name}！\n\n"
-            "🤖 <b>TG DGN Bot - 你的 Telegram 数字服务助手</b>\n\n"
-            "📋 <b>功能菜单：</b>\n"
-            "• 💎 Premium 直充 - 购买 Telegram Premium 会员\n"
-            "• 🏠 个人中心 - 管理余额、充值 USDT\n"
-            "• 🔍 地址查询 - 查询波场地址信息\n"
-            "• ⚡ 能量兑换 - TRON 能量租用、笔数套餐\n"
-            "• 🎁 免费克隆 - 即将上线\n"
-            "• 👨‍💼 联系客服 - 获取帮助\n\n"
-            "请点击下方按钮开始使用 👇"
-        )
+        # 使用配置的欢迎语
+        text = settings.welcome_message.replace("{first_name}", user.first_name)
         
-        keyboard = [
-            [
-                InlineKeyboardButton("💎 Premium直充", callback_data="menu_premium"),
-                InlineKeyboardButton("🏠 个人中心", callback_data="menu_profile")
-            ],
-            [
-                InlineKeyboardButton("🔍 地址查询", callback_data="menu_address_query"),
-                InlineKeyboardButton("⚡ 能量兑换", callback_data="menu_energy")
-            ],
-            [
-                InlineKeyboardButton("🎁 免费克隆", callback_data="menu_clone"),
-                InlineKeyboardButton("👨‍💼 联系客服", callback_data="menu_support")
-            ]
-        ]
+        # 构建引流按钮
+        keyboard = MainMenuHandler._build_promotion_buttons()
         reply_markup = InlineKeyboardMarkup(keyboard)
         
         await update.message.reply_text(text, parse_mode="HTML", reply_markup=reply_markup)
@@ -50,28 +81,19 @@ class MainMenuHandler:
     @staticmethod
     async def show_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         """显示主菜单（回调）"""
+        from ..config import settings
+        
         query = update.callback_query
         await query.answer()
         
+        # 使用配置的欢迎语（简化版）
         text = (
             "🤖 <b>主菜单</b>\n\n"
             "📋 请选择功能："
         )
         
-        keyboard = [
-            [
-                InlineKeyboardButton("💎 Premium直充", callback_data="menu_premium"),
-                InlineKeyboardButton("🏠 个人中心", callback_data="menu_profile")
-            ],
-            [
-                InlineKeyboardButton("🔍 地址查询", callback_data="menu_address_query"),
-                InlineKeyboardButton("⚡ 能量兑换", callback_data="menu_energy")
-            ],
-            [
-                InlineKeyboardButton("🎁 免费克隆", callback_data="menu_clone"),
-                InlineKeyboardButton("👨‍💼 联系客服", callback_data="menu_support")
-            ]
-        ]
+        # 构建引流按钮
+        keyboard = MainMenuHandler._build_promotion_buttons()
         reply_markup = InlineKeyboardMarkup(keyboard)
         
         await query.edit_message_text(text, parse_mode="HTML", reply_markup=reply_markup)

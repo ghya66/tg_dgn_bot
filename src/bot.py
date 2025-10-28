@@ -210,6 +210,10 @@ class TelegramBot:
         # 启动 Bot
         await self.app.initialize()
         await self.app.start()
+        
+        # 设置 Bot 菜单命令
+        await self.setup_bot_commands()
+        
         await self.app.updater.start_polling(
             allowed_updates=["message", "callback_query"],
             drop_pending_updates=True
@@ -226,6 +230,21 @@ class TelegramBot:
             logger.info("⏹️  收到停止信号...")
         finally:
             await self.stop()
+    
+    async def setup_bot_commands(self):
+        """设置 Bot 菜单命令（左下角菜单按钮）"""
+        from telegram import BotCommand
+        
+        commands = [
+            BotCommand("start", "🏠 开始使用 / 主菜单"),
+            BotCommand("premium", "💎 购买 Premium 会员"),
+            BotCommand("profile", "👤 个人中心"),
+            BotCommand("help", "❓ 帮助信息"),
+            BotCommand("cancel", "❌ 取消当前操作"),
+        ]
+        
+        await self.app.bot.set_my_commands(commands)
+        logger.info("✅ Bot 菜单命令已设置")
     
     async def stop(self):
         """停止 Bot"""
