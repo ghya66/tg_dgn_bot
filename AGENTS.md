@@ -56,6 +56,18 @@ Python 3.11, python-telegram-bot v21, httpx, Pydantic Settings, SQLAlchemy 2.0�
   - 闪兑：USDT 直接兑换能量
   - 完整配置文档：docs/PAYMENT_MODES.md
 
+- ✅ Issue #6: TRX 兑换功能（USDT → TRX）
+  - src/trx_exchange/ 模块：TRX 闪兑功能
+  - 支付方式：3位小数后缀（复用 Premium/余额充值系统）
+  - 汇率管理：固定汇率 + 1小时缓存 + 管理员配置
+  - 金额限制：最低 5 USDT，最高 20,000 USDT
+  - 手续费：Bot 承担（汇率已包含手续费成本）
+  - QR码：Telegram file_id（最安全方式）
+  - 转账：测试模式（生产环境需配置私钥）
+  - UI特性：QR码图片 + 可复制地址（<code>标签）
+  - 按钮布局：优化为 4x2（8个按钮）
+  - 完整测试覆盖（25 tests，包含汇率管理、地址验证、支付流程）
+
 ## Test Summary
 
 **核心功能测试（无需Redis/Database）: ✅ 80/80 通过**
@@ -111,6 +123,28 @@ Python 3.11, python-telegram-bot v21, httpx, Pydantic Settings, SQLAlchemy 2.0�
   - 并发保护
   - 边界情况处理
 
+**TRX 兑换测试（SQLite内存数据库）: ✅ 25/25 通过**
+
+- RateManager: 9/9 通过
+  - TRX 金额计算（精度保证）
+  - 从数据库获取汇率
+  - 汇率缓存机制（1小时TTL）
+  - 管理员设置汇率（创建/更新）
+  - 无效汇率拒绝（≤ 0）
+  - 设置汇率后清除缓存
+- TRXSender: 6/6 通过
+  - TRX 地址验证（Base58格式）
+  - 测试模式转账（返回mock tx_hash）
+  - 生产模式提示（未实现tronpy集成）
+  - 无效地址拒绝（长度/前缀/空值）
+- TRXExchangeHandler: 10/10 通过
+  - 订单ID生成（TRX前缀）
+  - 唯一金额生成（3位小数后缀）
+  - 启动兑换流程
+  - 金额输入验证（有效/格式错误/过小/过大）
+  - 地址输入验证（有效/无效）
+  - 支付页面展示（QR码+地址+汇率）
+
 **Redis 集成测试（标记 @pytest.mark.redis）: 20 个**
 
 - 8 个原有集成测试（payment_processor, integration, premium_delivery）
@@ -128,7 +162,7 @@ Python 3.11, python-telegram-bot v21, httpx, Pydantic Settings, SQLAlchemy 2.0�
 
 - GitHub Actions 使用 `redis:7-alpine` service
 - 健康检查 + 连接等待确保 Redis 就绪
-- 运行全部 142 个测试（80 核心 + 20 钱包 + 22 地址查询 + 20 Redis）
+- 运行全部 198 个测试（80 核心 + 20 钱包 + 22 地址查询 + 25 TRX兑换 + 14 能量 + 其他）
 - Python 3.11 & 3.12 矩阵测试
 - 依赖：redis>=5.0, sqlalchemy>=2.0, pytest-asyncio>=0.23, pytest-timeout>=2.3
 
@@ -142,9 +176,16 @@ Python 3.11, python-telegram-bot v21, httpx, Pydantic Settings, SQLAlchemy 2.0�
 
 **支付模式架构: ✅**
 
-- 三位小数后缀模式（Premium、余额充值）
+- 三位小数后缀模式（Premium、余额充值、TRX兑换）
 - TRX/USDT 直转模式（能量服务）
 - 免费功能（地址查询）
 - 完整文档：docs/PAYMENT_MODES.md
+
+**按钮布局优化: ✅**
+
+- 从 10 个按钮优化为 8 个按钮（4x2 布局）
+- 删除 2 个占位按钮（能量闪租、限时能量）
+- 实现 TRX 兑换按钮完整功能
+- 按钮顺序：飞机会员、能量兑换、地址监听、个人中心、TRX兑换、联系客服、实时U价、免费克隆
 
 CI 全绿✅；真实 Redis 集成测试；SQLite 持久化；完整覆盖；README & .env.example 完整。

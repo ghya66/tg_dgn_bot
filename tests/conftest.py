@@ -61,3 +61,29 @@ async def clean_redis(redis_client):
     await redis_client.flushdb()
     yield
     await redis_client.flushdb()
+
+
+@pytest.fixture
+def test_db():
+    """提供SQLite内存数据库用于测试"""
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+    from src.trx_exchange.models import Base as TRXBase
+    from src.trx_exchange.rate_manager import Base as RateBase
+    
+    # 创建内存数据库
+    engine = create_engine("sqlite:///:memory:")
+    
+    # 创建所有表
+    TRXBase.metadata.create_all(engine)
+    RateBase.metadata.create_all(engine)
+    
+    # 创建session
+    SessionLocal = sessionmaker(bind=engine)
+    session = SessionLocal()
+    
+    yield session
+    
+    # 清理
+    session.close()
+    engine.dispose()

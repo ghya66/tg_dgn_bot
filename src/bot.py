@@ -22,6 +22,7 @@ from src.wallet.profile_handler import ProfileHandler
 from src.wallet.wallet_manager import WalletManager
 from src.address_query.handler import AddressQueryHandler
 from src.energy.handler_direct import create_energy_direct_handler
+from src.trx_exchange.handler import TRXExchangeHandler
 from src.payments.order import order_manager
 from src.payments.suffix_manager import suffix_manager
 
@@ -93,11 +94,9 @@ class TelegramBot:
             "⚡ 能量兑换",
             "🔍 地址监听",
             "👤 个人中心",
-            "� TRX 兑换",
-            "� 限时能量",
-            "👨‍� 联系客服",
+            "🔄 TRX 兑换",
+            "👨‍💼 联系客服",
             "🌐 实时U价",
-            "⚡ 能量闪租",
             "📱 免费克隆"
         ]
         self.app.add_handler(MessageHandler(
@@ -166,6 +165,11 @@ class TelegramBot:
         # 使用新的直转模式 handler
         self.app.add_handler(create_energy_direct_handler())
         logger.info("✅ 能量兑换处理器已注册（TRX/USDT 直转模式）")
+        
+        # === TRX 兑换 ===
+        trx_exchange_handler = TRXExchangeHandler()
+        self.app.add_handler(trx_exchange_handler.get_handlers())
+        logger.info("✅ TRX 兑换处理器已注册")
         
         # === 即将上线功能 ===
         self.app.add_handler(CallbackQueryHandler(

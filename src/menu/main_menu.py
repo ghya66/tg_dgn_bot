@@ -77,13 +77,12 @@ class MainMenuHandler:
         inline_keyboard = MainMenuHandler._build_promotion_buttons()
         inline_markup = InlineKeyboardMarkup(inline_keyboard)
         
-        # 构建底部键盘（ReplyKeyboard）- 10个按钮
+        # 构建底部键盘（ReplyKeyboard）- 8个按钮，4x2布局
         reply_keyboard = [
             [KeyboardButton("💎 飞机会员"), KeyboardButton("⚡ 能量兑换")],
-            [KeyboardButton("🔍 地址监听"), KeyboardButton("� 个人中心")],
-            [KeyboardButton("� TRX 兑换"), KeyboardButton("� 限时能量")],
-            [KeyboardButton("�‍💼 联系客服"), KeyboardButton("🌐 实时U价")],
-            [KeyboardButton("⚡ 能量闪租"), KeyboardButton("📱 免费克隆")],
+            [KeyboardButton("🔍 地址监听"), KeyboardButton("👤 个人中心")],
+            [KeyboardButton("🔄 TRX 兑换"), KeyboardButton("👨‍💼 联系客服")],
+            [KeyboardButton("🌐 实时U价"), KeyboardButton("📱 免费克隆")],
         ]
         reply_markup = ReplyKeyboardMarkup(
             reply_keyboard,
@@ -320,22 +319,24 @@ class MainMenuHandler:
             from ..address_query.handler import AddressQueryHandler
             await AddressQueryHandler.start(update, context)
         
-        elif text == "� 个人中心":
+        elif text == "👤 个人中心":
             # 导航到个人中心
             from ..wallet.profile_handler import ProfileHandler
             await ProfileHandler.profile_command(update, context)
         
         elif text == "🔄 TRX 兑换":
-            # TRX兑换功能（占位）
+            # TRX兑换功能
+            from ..trx_exchange.handler import TRXExchangeHandler
+            # Start conversation
+            # Note: This will be handled by ConversationHandler, just show menu
             await update.message.reply_text(
-                "🔄 <b>TRX 兑换</b>\n\n功能开发中，敬请期待",
-                parse_mode="HTML"
-            )
-        
-        elif text == "� 限时能量":
-            # 限时能量功能（占位）
-            await update.message.reply_text(
-                "� <b>限时能量</b>\n\n功能开发中，敬请期待",
+                "🔄 <b>TRX 闪兑</b>\n\n"
+                "24小时自动兑换，安全快捷！\n\n"
+                "💰 最低兑换：5 USDT\n"
+                "💰 最高兑换：20,000 USDT\n"
+                "⚡ 到账时间：5-10 分钟\n"
+                "🔒 手续费：Bot 承担\n\n"
+                "请输入您要兑换的 USDT 数量：",
                 parse_mode="HTML"
             )
         
@@ -351,14 +352,7 @@ class MainMenuHandler:
             # 显示实时 USDT 汇率
             await MainMenuHandler.show_usdt_price(update, context)
         
-        elif text == "⚡ 能量闪租":
-            # 能量闪租功能（占位）
-            await update.message.reply_text(
-                "⚡ <b>能量闪租</b>\n\n功能开发中，敬请期待",
-                parse_mode="HTML"
-            )
-        
-        elif text == "� 免费克隆":
+        elif text == "📱 免费克隆":
             # 免费克隆功能
             from ..config import settings
             keyboard = [[InlineKeyboardButton("👨‍💼 联系客服", callback_data="menu_support")]]

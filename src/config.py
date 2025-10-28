@@ -44,6 +44,14 @@ class Settings(BaseSettings):
     energy_package_address: str = ""  # 笔数套餐收USDT地址
     energy_flash_address: str = ""  # 闪兑收USDT地址
     
+    # TRX兑换配置
+    trx_exchange_receive_address: str = ""  # 收USDT地址
+    trx_exchange_send_address: str = ""  # 发TRX地址
+    trx_exchange_private_key: str = ""  # 发TRX私钥（生产环境填写）
+    trx_exchange_qrcode_file_id: str = ""  # 收款二维码 Telegram file_id
+    trx_exchange_default_rate: float = 3.05  # 默认汇率（1 USDT = X TRX）
+    trx_exchange_test_mode: bool = True  # 测试模式（不实际转账）
+    
     # 免费克隆功能文案
     free_clone_message: str = (
         "🎁 <b>免费克隆服务</b>\n\n"
