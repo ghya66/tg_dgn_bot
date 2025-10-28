@@ -33,6 +33,12 @@ class Settings(BaseSettings):
     # 地址查询限频（分钟）
     address_query_rate_limit_minutes: int = 30
     
+    # 能量API配置
+    energy_api_username: str = ""
+    energy_api_password: str = ""
+    energy_api_base_url: str = "https://trxno.com"
+    energy_api_backup_url: str = "https://trxfast.com"
+    
     class Config:
         env_file = ".env"
         case_sensitive = False

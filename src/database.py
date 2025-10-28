@@ -102,6 +102,43 @@ class AddressQueryLog(Base):
     query_count = Column(Integer, default=1, nullable=False)  # 查询次数
 
 
+class EnergyOrder(Base):
+    """能量订单表"""
+    __tablename__ = "energy_orders"
+    
+    order_id = Column(String, primary_key=True, index=True)
+    user_id = Column(Integer, nullable=False, index=True)
+    order_type = Column(String, nullable=False)  # hourly/package/flash
+    
+    # 时长能量字段
+    energy_amount = Column(Integer, nullable=True)  # 能量数量(65000/131000)
+    purchase_count = Column(Integer, nullable=True)  # 购买笔数(1-20)
+    
+    # 笔数套餐字段
+    package_count = Column(Integer, nullable=True)  # 套餐笔数
+    
+    # 闪兑字段
+    usdt_amount = Column(Float, nullable=True)  # USDT金额
+    
+    # 通用字段
+    receive_address = Column(String, nullable=False)  # 接收地址
+    total_price_trx = Column(Float, nullable=True)  # 总价(TRX)
+    total_price_usdt = Column(Float, nullable=True)  # 总价(USDT)
+    
+    status = Column(String, default="PENDING", nullable=False)  # PENDING/PROCESSING/COMPLETED/FAILED/EXPIRED
+    api_order_id = Column(String, nullable=True, index=True)  # API订单ID
+    error_message = Column(String, nullable=True)  # 错误信息
+    
+    created_at = Column(DateTime, default=datetime.now, nullable=False)
+    completed_at = Column(DateTime, nullable=True)  # 完成时间
+    
+    # 创建索引
+    __table_args__ = (
+        Index('idx_energy_user_status', 'user_id', 'status'),
+        Index('idx_energy_order_type', 'order_type'),
+    )
+
+
 def init_db():
     """初始化数据库（创建所有表）"""
     Base.metadata.create_all(bind=engine)

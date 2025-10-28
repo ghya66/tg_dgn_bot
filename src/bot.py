@@ -18,7 +18,11 @@ from src.menu import MainMenuHandler
 from src.premium.handler import PremiumHandler
 from src.premium.delivery import PremiumDeliveryService
 from src.wallet.profile_handler import ProfileHandler
+from src.wallet.wallet_manager import WalletManager
 from src.address_query.handler import AddressQueryHandler
+from src.energy.client import EnergyAPIClient
+from src.energy.manager import EnergyOrderManager
+from src.energy.handler import EnergyHandler
 from src.payments.order import order_manager
 from src.payments.suffix_manager import suffix_manager
 
@@ -37,6 +41,10 @@ class TelegramBot:
         """初始化 Bot"""
         self.app = None
         self.premium_handler = None
+        self.energy_handler = None
+        self.wallet_manager = None
+        self.energy_client = None
+        self.energy_manager = None
         
     async def initialize(self):
         """初始化所有组件"""
@@ -53,6 +61,31 @@ class TelegramBot:
         
         # 创建 Application
         self.app = Application.builder().token(settings.bot_token).build()
+        
+        # 初始化钱包管理器
+        self.wallet_manager = WalletManager()
+        
+        # 初始化能量API客户端
+        if settings.energy_api_username and settings.energy_api_password:
+            self.energy_client = EnergyAPIClient(
+                username=settings.energy_api_username,
+                password=settings.energy_api_password,
+                base_url=settings.energy_api_base_url,
+                backup_url=settings.energy_api_backup_url
+            )
+            
+            # 初始化能量订单管理器
+            self.energy_manager = EnergyOrderManager(
+                api_client=self.energy_client,
+                wallet_manager=self.wallet_manager
+            )
+            
+            # 初始化能量处理器
+            self.energy_handler = EnergyHandler(order_manager=self.energy_manager)
+            
+            logger.info("✅ 能量兑换模块初始化完成")
+        else:
+            logger.warning("⚠️  能量API配置未设置，能量兑换功能将不可用")
         
         # 初始化 Premium 处理器
         delivery_service = PremiumDeliveryService(
@@ -134,10 +167,23 @@ class TelegramBot:
             AddressQueryHandler.handle_address_input
         ))
         
+        # === 能量兑换 ===
+        if self.energy_handler:
+            # 能量兑换对话处理器
+            self.app.add_handler(self.energy_handler.get_conversation_handler())
+            logger.info("✅ 能量兑换处理器已注册")
+        else:
+            # 如果未配置，显示占位提示
+            self.app.add_handler(CallbackQueryHandler(
+                MainMenuHandler.handle_coming_soon,
+                pattern=r'^energy_exchange$'
+            ))
+            logger.warning("⚠️  能量兑换功能未配置，使用占位提示")
+        
         # === 即将上线功能 ===
         self.app.add_handler(CallbackQueryHandler(
             MainMenuHandler.handle_coming_soon,
-            pattern=r'^menu_(energy|clone)$'
+            pattern=r'^menu_clone$'
         ))
         
         # === 联系客服 ===
@@ -189,6 +235,10 @@ class TelegramBot:
             await self.app.updater.stop()
             await self.app.stop()
             await self.app.shutdown()
+        
+        # 关闭能量API客户端
+        if self.energy_client:
+            await self.energy_client.close()
         
         # 断开 Redis
         await order_manager.disconnect()
