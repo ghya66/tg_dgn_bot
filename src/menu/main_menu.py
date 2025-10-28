@@ -77,12 +77,13 @@ class MainMenuHandler:
         inline_keyboard = MainMenuHandler._build_promotion_buttons()
         inline_markup = InlineKeyboardMarkup(inline_keyboard)
         
-        # 构建底部键盘（ReplyKeyboard）
+        # 构建底部键盘（ReplyKeyboard）- 10个按钮
         reply_keyboard = [
-            [KeyboardButton("💎 开通会员"), KeyboardButton("📍 指令问我")],
-            [KeyboardButton("⚡ 能量闪租"), KeyboardButton("📊 我的订单")],
-            [KeyboardButton("💰 充值"), KeyboardButton("👤 个人中心")],
-            [KeyboardButton("📊 实时U价")],
+            [KeyboardButton("💎 飞机会员"), KeyboardButton("⚡ 能量兑换")],
+            [KeyboardButton("🔍 地址监听"), KeyboardButton("� 个人中心")],
+            [KeyboardButton("� TRX 兑换"), KeyboardButton("� 限时能量")],
+            [KeyboardButton("�‍💼 联系客服"), KeyboardButton("🌐 实时U价")],
+            [KeyboardButton("⚡ 能量闪租"), KeyboardButton("📱 免费克隆")],
         ]
         reply_markup = ReplyKeyboardMarkup(
             reply_keyboard,
@@ -304,53 +305,66 @@ class MainMenuHandler:
         text = update.message.text
         
         # 根据按钮文字路由到对应功能
-        if text == "💎 开通会员":
-            # 导入并调用 Premium 处理器
+        if text == "💎 飞机会员":
+            # 导航到 Premium 购买
             from ..premium.handler import PremiumHandler
-            # 模拟 /premium 命令
-            await update.message.reply_text(
-                "💎 <b>Premium 会员直充</b>\n\n"
-                "请使用 /premium 命令开始购买流程",
-                parse_mode="HTML"
-            )
+            await PremiumHandler.show_premium_menu(update, context)
         
-        elif text == "📍 指令问我":
-            # 显示帮助信息
-            await MainMenuHandler.help_command(update, context)
+        elif text == "⚡ 能量兑换":
+            # 导航到能量兑换主菜单
+            from ..energy.handler import EnergyHandler
+            await EnergyHandler.show_main_menu(update, context)
         
-        elif text == "⚡ 能量闪租":
-            # 导航到能量兑换
-            await update.message.reply_text(
-                "⚡ <b>能量闪租</b>\n\n"
-                "正在为您打开能量兑换功能...",
-                parse_mode="HTML"
-            )
-            # TODO: 触发能量兑换流程
+        elif text == "🔍 地址监听":
+            # 导航到地址查询
+            from ..address_query.handler import AddressQueryHandler
+            await AddressQueryHandler.start(update, context)
         
-        elif text == "📊 我的订单":
-            # 显示订单列表
-            await update.message.reply_text(
-                "📊 <b>我的订单</b>\n\n"
-                "正在查询您的订单记录...\n\n"
-                "功能开发中，敬请期待",
-                parse_mode="HTML"
-            )
-        
-        elif text == "💰 充值":
-            # 导航到个人中心充值
-            from ..wallet.profile_handler import ProfileHandler
-            # 模拟点击充值按钮
-            await update.message.reply_text(
-                "💰 <b>充值 USDT</b>\n\n"
-                "请使用 /profile 命令进入个人中心，然后选择\"充值 USDT\"",
-                parse_mode="HTML"
-            )
-        
-        elif text == "👤 个人中心":
+        elif text == "� 个人中心":
             # 导航到个人中心
             from ..wallet.profile_handler import ProfileHandler
             await ProfileHandler.profile_command(update, context)
         
-        elif text == "📊 实时U价":
+        elif text == "🔄 TRX 兑换":
+            # TRX兑换功能（占位）
+            await update.message.reply_text(
+                "🔄 <b>TRX 兑换</b>\n\n功能开发中，敬请期待",
+                parse_mode="HTML"
+            )
+        
+        elif text == "� 限时能量":
+            # 限时能量功能（占位）
+            await update.message.reply_text(
+                "� <b>限时能量</b>\n\n功能开发中，敬请期待",
+                parse_mode="HTML"
+            )
+        
+        elif text == "👨‍💼 联系客服":
+            # 显示客服联系方式
+            from ..config import settings
+            await update.message.reply_text(
+                f"👨‍💼 <b>联系客服</b>\n\n{settings.support_contact}",
+                parse_mode="HTML"
+            )
+        
+        elif text == "🌐 实时U价":
             # 显示实时 USDT 汇率
             await MainMenuHandler.show_usdt_price(update, context)
+        
+        elif text == "⚡ 能量闪租":
+            # 能量闪租功能（占位）
+            await update.message.reply_text(
+                "⚡ <b>能量闪租</b>\n\n功能开发中，敬请期待",
+                parse_mode="HTML"
+            )
+        
+        elif text == "� 免费克隆":
+            # 免费克隆功能
+            from ..config import settings
+            keyboard = [[InlineKeyboardButton("👨‍💼 联系客服", callback_data="menu_support")]]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            await update.message.reply_text(
+                settings.free_clone_message,
+                parse_mode="HTML",
+                reply_markup=reply_markup
+            )
