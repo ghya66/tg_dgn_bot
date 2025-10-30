@@ -28,6 +28,7 @@ from src.payments.suffix_manager import suffix_manager
 from src.health import health_command
 from src.bot_admin import admin_handler
 from src.tasks.order_expiry import order_expiry_task
+from src.orders import get_orders_handler
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 # 配置日志
@@ -89,12 +90,20 @@ class TelegramBot:
         
         # === 基础命令 ===
         self.app.add_handler(CommandHandler("start", MainMenuHandler.start_command))
-        self.app.add_handler(CommandHandler("help", MainMenuHandler.help_command))
         self.app.add_handler(CommandHandler("health", health_command))
+        
+        # === 增强帮助系统 ===
+        from src.help import get_help_handler
+        self.app.add_handler(get_help_handler())
+        logger.info("✅ 帮助系统处理器已注册（分类帮助 + FAQ）")
         
         # === 管理员面板 ===
         self.app.add_handler(admin_handler.get_conversation_handler())
         logger.info("✅ 管理员面板处理器已注册")
+        
+        # === 订单查询（管理员专用） ===
+        self.app.add_handler(get_orders_handler())
+        logger.info("✅ 订单查询处理器已注册（管理员专用）")
         
         # === 底部键盘按钮处理 ===
         # 使用 Regex 过滤器匹配特定按钮文字
@@ -261,6 +270,7 @@ class TelegramBot:
                 BotCommand("start", "🏠 开始使用 / 主菜单"),
                 BotCommand("health", "🏥 系统健康检查"),
                 BotCommand("admin", "🔐 管理员面板"),
+                BotCommand("orders", "📦 订单查询管理"),
             ]
             try:
                 await self.app.bot.set_my_commands(
