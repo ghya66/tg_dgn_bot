@@ -6,9 +6,16 @@
 import pytest
 import sys
 import os
+import tempfile
 
 # 添加项目根目录到路径
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+# 在导入之前设置测试数据库路径
+if "DATABASE_URL" not in os.environ:
+    test_db = tempfile.NamedTemporaryFile(delete=False, suffix=".db")
+    test_db.close()
+    os.environ["DATABASE_URL"] = f"sqlite:///{test_db.name}"
 
 from src.bot_admin.config_manager import config_manager
 from src.bot_admin.audit_log import audit_logger

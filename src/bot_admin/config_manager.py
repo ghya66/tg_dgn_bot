@@ -61,6 +61,13 @@ class ConfigManager:
         if db_path is None:
             db_path = os.getenv("DATABASE_URL", "sqlite:///data/bot.db")
         
+        # 确保数据库目录存在
+        if db_path.startswith("sqlite:///"):
+            db_file_path = db_path.replace("sqlite:///", "")
+            db_dir = os.path.dirname(db_file_path)
+            if db_dir and not os.path.exists(db_dir):
+                os.makedirs(db_dir, exist_ok=True)
+        
         self.engine = create_engine(db_path)
         Base.metadata.create_all(self.engine)
         self.SessionLocal = sessionmaker(bind=self.engine)
