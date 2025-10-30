@@ -151,7 +151,13 @@ class TestTRXSender:
 
     def test_send_trx_production_not_implemented(self):
         """Test TRX transfer in production mode (not implemented)."""
-        with patch("src.config.settings.trx_exchange_test_mode", False):
+        # 需要在 patch 后重新导入并实例化才能生效
+        with patch("src.trx_exchange.trx_sender.settings") as mock_settings:
+            mock_settings.trx_exchange_test_mode = False
+            mock_settings.trx_exchange_send_address = "TSENDER_ADDRESS_123456789012345678"
+            mock_settings.trx_exchange_private_key = None
+            
+            # 在 patch 作用域内创建实例
             sender = TRXSender()
             assert sender.test_mode is False
 
