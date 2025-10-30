@@ -3,13 +3,11 @@
 
 提供订单、用户、收入等统计数据。
 """
-import os
 import logging
 from typing import Dict
 from datetime import datetime, timedelta
-from sqlalchemy import create_engine, func
-from sqlalchemy.orm import sessionmaker
-from src.database import Order, User
+from sqlalchemy import func, inspect
+from src.database import SessionLocal, engine, Order, User
 
 logger = logging.getLogger(__name__)
 
@@ -17,13 +15,20 @@ logger = logging.getLogger(__name__)
 class StatsManager:
     """统计管理器"""
     
-    def __init__(self, db_path: str = None):
+    def __init__(self):
         """初始化统计管理器"""
-        if db_path is None:
-            db_path = os.getenv("DATABASE_URL", "sqlite:///data/bot.db")
+        # 直接使用 src.database 的 SessionLocal，无需创建独立引擎
+        self.SessionLocal = SessionLocal
         
-        self.engine = create_engine(db_path)
-        self.SessionLocal = sessionmaker(bind=self.engine)
+        # 启动验证：确认数据库引擎和表存在
+        logger.info(f"StatsManager 使用数据库: {engine.url}")
+        inspector = inspect(engine)
+        tables = inspector.get_table_names()
+        
+        if "orders" not in tables:
+            logger.warning("数据库中未找到 orders 表，统计功能可能异常")
+        else:
+            logger.info(f"数据库表验证成功，共 {len(tables)} 个表")
     
     def get_order_stats(self) -> Dict:
         """获取订单统计"""
