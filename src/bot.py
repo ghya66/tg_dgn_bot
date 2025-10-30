@@ -27,6 +27,8 @@ from src.payments.order import order_manager
 from src.payments.suffix_manager import suffix_manager
 from src.health import health_command
 from src.bot_admin import admin_handler
+from src.tasks.order_expiry import order_expiry_task
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 # 配置日志
 logging.basicConfig(
@@ -44,6 +46,7 @@ class TelegramBot:
         self.app = None
         self.premium_handler = None
         self.wallet_manager = None
+        self.scheduler = None
         
     async def initialize(self):
         """初始化所有组件"""
@@ -218,6 +221,9 @@ class TelegramBot:
         # 设置 Bot 菜单命令
         await self.setup_bot_commands()
         
+        # 启动定时任务调度器
+        self.start_scheduler()
+        
         await self.app.updater.start_polling(
             allowed_updates=["message", "callback_query"],
             drop_pending_updates=True
@@ -267,9 +273,36 @@ class TelegramBot:
         
         logger.info("✅ Bot 菜单命令已设置")
     
+    def start_scheduler(self):
+        """启动定时任务调度器"""
+        try:
+            self.scheduler = AsyncIOScheduler()
+            
+            # 添加订单超时检查任务（每5分钟执行一次）
+            self.scheduler.add_job(
+                order_expiry_task.run,
+                trigger='interval',
+                minutes=5,
+                id='order_expiry_task',
+                name='订单超时检查任务',
+                replace_existing=True
+            )
+            
+            # 启动调度器
+            self.scheduler.start()
+            logger.info("✅ 定时任务调度器已启动（每5分钟检查订单超时）")
+            
+        except Exception as e:
+            logger.error(f"❌ 定时任务调度器启动失败: {e}", exc_info=True)
+    
     async def stop(self):
         """停止 Bot"""
         logger.info("🛑 停止 Bot...")
+        
+        # 停止定时任务调度器
+        if self.scheduler:
+            self.scheduler.shutdown(wait=False)
+            logger.info("✅ 定时任务调度器已停止")
         
         if self.app:
             await self.app.updater.stop()
