@@ -12,5 +12,5 @@
     "chat.sendElementsToChat.attachCSS": false,
     "chat.sendElementsToChat.attachImages": false,
     "chat.sendElementsToChat.enabled": false,
-    "python.analysis.autoImportCompletions": true
+    "python.analysis.autoImportCompletions": false
 }
