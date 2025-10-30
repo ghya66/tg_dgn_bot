@@ -25,6 +25,8 @@ from src.energy.handler_direct import create_energy_direct_handler
 from src.trx_exchange.handler import TRXExchangeHandler
 from src.payments.order import order_manager
 from src.payments.suffix_manager import suffix_manager
+from src.health import health_command
+from src.bot_admin import admin_handler
 
 # 配置日志
 logging.basicConfig(
@@ -65,7 +67,7 @@ class TelegramBot:
         
         # 初始化 Premium 处理器
         delivery_service = PremiumDeliveryService(
-            bot_token=settings.bot_token,
+            bot=self.app.bot,
             order_manager=order_manager
         )
         
@@ -85,6 +87,11 @@ class TelegramBot:
         # === 基础命令 ===
         self.app.add_handler(CommandHandler("start", MainMenuHandler.start_command))
         self.app.add_handler(CommandHandler("help", MainMenuHandler.help_command))
+        self.app.add_handler(CommandHandler("health", health_command))
+        
+        # === 管理员面板 ===
+        self.app.add_handler(admin_handler.get_conversation_handler())
+        logger.info("✅ 管理员面板处理器已注册")
         
         # === 底部键盘按钮处理 ===
         # 使用 Regex 过滤器匹配特定按钮文字
@@ -92,12 +99,12 @@ class TelegramBot:
         keyboard_buttons = [
             "💎 飞机会员",
             "⚡ 能量兑换",
-            "🔍 地址监听",
+            "🔍 地址查询",
             "👤 个人中心",
             "🔄 TRX 兑换",
             "👨‍💼 联系客服",
-            "🌐 实时U价",
-            "📱 免费克隆"
+            "💵 实时U价",
+            "🎁 免费克隆"
         ]
         self.app.add_handler(MessageHandler(
             tg_filters.Regex(f"^({'|'.join(map(re.escape, keyboard_buttons))})$"),
@@ -230,13 +237,34 @@ class TelegramBot:
     
     async def setup_bot_commands(self):
         """设置 Bot 菜单命令（左下角菜单按钮）"""
-        from telegram import BotCommand
+        from telegram import BotCommand, BotCommandScopeDefault, BotCommandScopeChat
         
-        commands = [
+        # 1. 为所有用户设置通用命令（只显示 /start）
+        common_commands = [
             BotCommand("start", "🏠 开始使用 / 主菜单"),
         ]
+        await self.app.bot.set_my_commands(
+            common_commands,
+            scope=BotCommandScopeDefault()
+        )
+        logger.info("✅ 已设置通用用户命令")
         
-        await self.app.bot.set_my_commands(commands)
+        # 2. 为 Owner 设置管理员命令
+        if settings.bot_owner_id and settings.bot_owner_id > 0:
+            admin_commands = [
+                BotCommand("start", "🏠 开始使用 / 主菜单"),
+                BotCommand("health", "🏥 系统健康检查"),
+                BotCommand("admin", "🔐 管理员面板"),
+            ]
+            try:
+                await self.app.bot.set_my_commands(
+                    admin_commands,
+                    scope=BotCommandScopeChat(chat_id=settings.bot_owner_id)
+                )
+                logger.info(f"✅ 已设置 Owner 管理员命令（User ID: {settings.bot_owner_id}）")
+            except Exception as e:
+                logger.warning(f"⚠️ 设置 Owner 命令失败: {e}")
+        
         logger.info("✅ Bot 菜单命令已设置")
     
     async def stop(self):

@@ -1,0 +1,6 @@
+# Streamlit Admin 面板依赖
+streamlit==1.31.1
+plotly==5.18.0
+pandas==2.2.0
+httpx==0.26.0
+streamlit-authenticator==0.3.1

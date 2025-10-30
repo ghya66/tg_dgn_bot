@@ -34,7 +34,7 @@ class SuffixManager:
         if self.redis_client:
             await self.redis_client.close()
     
-    async def allocate_suffix(self, order_id: str) -> Optional[int]:
+    async def allocate_suffix(self, order_id: Optional[str] = None) -> Optional[int]:
         """
         分配唯一后缀 (1-999)
         
@@ -57,7 +57,7 @@ class SuffixManager:
         
         return None
     
-    async def _try_allocate_suffix(self, order_id: str) -> Optional[int]:
+    async def _try_allocate_suffix(self, order_id: Optional[str]) -> Optional[int]:
         """尝试分配后缀"""
         # 获取当前已使用的后缀
         used_suffixes = await self._get_used_suffixes()
@@ -87,7 +87,7 @@ class SuffixManager:
         
         return used_suffixes
     
-    async def _reserve_suffix(self, suffix: int, order_id: str) -> bool:
+    async def _reserve_suffix(self, suffix: int, order_id: Optional[str]) -> bool:
         """
         原子性地预留后缀
         
@@ -104,7 +104,7 @@ class SuffixManager:
         # 使用SET NX EX命令实现原子性预留
         result = await self.redis_client.set(
             key, 
-            order_id,
+            order_id or "pending",
             nx=True,  # 只在key不存在时设置
             ex=timeout_minutes * 60  # 过期时间（秒）
         )
@@ -137,6 +137,29 @@ class SuffixManager:
         
         result = await self.redis_client.eval(lua_script, 1, key, order_id)
         return result == 1
+
+    async def set_order_id(self, suffix: int, order_id: str) -> bool:
+        """
+        将已分配后缀绑定到真实订单ID（保持原有TTL）
+        仅当后缀键存在时更新其值。
+        
+        Args:
+            suffix: 后缀
+            order_id: 订单ID
+        Returns:
+            是否更新成功
+        """
+        await self.connect()
+        key = f"suffix:{suffix}"
+        # 获取剩余TTL
+        ttl = await self.redis_client.ttl(key)
+        if ttl is None or ttl < 0:
+            # -2: 不存在；-1: 无过期
+            return False
+        # 使用相同TTL重设值
+        # Redis 不支持直接保留TTL的SET，因此手动指定 EX
+        ok = await self.redis_client.set(key, order_id, ex=max(ttl, 1))
+        return ok is True
     
     async def cleanup_expired(self) -> int:
         """

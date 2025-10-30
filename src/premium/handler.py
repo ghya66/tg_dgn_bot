@@ -101,14 +101,20 @@ class PremiumHandler:
             ]
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
-        
-        await update.message.reply_text(
+
+        text = (
             "🎁 *Premium 会员直充*\n\n"
             "选择套餐后，请提供收件人用户名（支持 @username 或 t.me/username 格式）\n\n"
-            "套餐价格：",
-            reply_markup=reply_markup,
-            parse_mode='Markdown'
+            "套餐价格："
         )
+
+        # 支持命令或回调两种入口
+        if update.message:
+            await update.message.reply_text(text, reply_markup=reply_markup, parse_mode='Markdown')
+        else:
+            query = update.callback_query
+            await query.answer()
+            await query.edit_message_text(text, reply_markup=reply_markup, parse_mode='Markdown')
         
         return SELECTING_PACKAGE
     
@@ -181,23 +187,21 @@ class PremiumHandler:
         
         # 创建订单
         try:
-            suffix = await self.suffix_manager.allocate_suffix()
             base_amount = context.user_data['base_amount']
-            total_amount = AmountCalculator.generate_payment_amount(base_amount, suffix)
-            
             order = await self.order_manager.create_order(
-                base_amount=base_amount,
-                unique_suffix=suffix,
                 user_id=update.effective_user.id,
+                base_amount=base_amount,
                 order_type=OrderType.PREMIUM,
                 premium_months=context.user_data['premium_months'],
                 recipients=recipients
             )
-            
+            if order is None:
+                raise RuntimeError("failed to create order")
+
             context.user_data['order_id'] = order.order_id
-            context.user_data['total_amount'] = total_amount
-            context.user_data['unique_suffix'] = suffix
-            
+            context.user_data['total_amount'] = order.total_amount
+            context.user_data['unique_suffix'] = order.unique_suffix
+
         except Exception as e:
             logger.error(f"Failed to create premium order: {e}")
             await update.message.reply_text(
@@ -220,7 +224,7 @@ class PremiumHandler:
             f"收件人数量：{len(recipients)}\n"
             f"收件人：{', '.join('@' + r for r in recipients[:5])}"
             f"{'...' if len(recipients) > 5 else ''}\n\n"
-            f"💰 应付金额：`{total_amount:.3f}` USDT (TRC20)\n"
+            f"💰 应付金额：`{context.user_data['total_amount']:.3f}` USDT (TRC20)\n"
             f"📍 收款地址：`{self.receive_address}`\n\n"
             f"⏰ 订单有效期：30分钟\n"
             f"🔖 订单号：`{order.order_id}`",
@@ -272,10 +276,7 @@ class PremiumHandler:
         await query.answer()
         
         # 释放后缀
-        if 'unique_suffix' in context.user_data:
-            await self.suffix_manager.release_suffix(context.user_data['unique_suffix'])
-        
-        # 取消订单
+        # 取消订单（内部会释放后缀）
         if 'order_id' in context.user_data:
             await self.order_manager.cancel_order(context.user_data['order_id'])
         
@@ -296,8 +297,6 @@ class PremiumHandler:
         """
         await update.message.reply_text("操作已取消")
         
-        # 清理资源
-        if 'unique_suffix' in context.user_data:
-            await self.suffix_manager.release_suffix(context.user_data['unique_suffix'])
+        # 清理资源：订单取消逻辑已在 cancel_order 中处理
         
         return ConversationHandler.END

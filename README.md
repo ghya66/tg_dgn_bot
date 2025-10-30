@@ -185,6 +185,9 @@ Bot 采用双层按钮设计，提供便捷的交互体验：
 | `/premium` | 购买 Premium 会员 |
 | `/profile` | 个人中心（余额管理）|
 | `/cancel` | 取消当前操作 |
+| `/admin` | 🔐 管理员面板（仅 Bot Owner）|
+
+> **管理员功能**：使用 `/admin` 命令访问管理面板，配置价格、查看统计等。详见 [管理面板指南](docs/ADMIN_PANEL_GUIDE.md)。
 
 ### 功能流程
 

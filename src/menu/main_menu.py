@@ -5,6 +5,7 @@ import logging
 import json
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
+from src.utils.content_helper import get_content
 
 logger = logging.getLogger(__name__)
 
@@ -22,8 +23,8 @@ class MainMenuHandler:
             buttons_config = settings.promotion_buttons
             # 移除换行和多余空格
             buttons_config = buttons_config.replace('\n', '').replace(' ', '')
-            # 解析为列表
-            button_rows = eval(f'[{buttons_config}]')
+            # 解析为列表（安全地使用 JSON）
+            button_rows = json.loads(f'[{buttons_config}]')
             
             keyboard = []
             for row in button_rows:
@@ -70,8 +71,9 @@ class MainMenuHandler:
         
         user = update.effective_user
         
-        # 使用配置的欢迎语
-        text = settings.welcome_message.replace("{first_name}", user.first_name)
+        # 从数据库读取欢迎语（支持热更新）
+        text = get_content("welcome_message", default=settings.welcome_message)
+        text = text.replace("{first_name}", user.first_name)
         
         # 构建引流按钮（InlineKeyboard）
         inline_keyboard = MainMenuHandler._build_promotion_buttons()
@@ -80,9 +82,9 @@ class MainMenuHandler:
         # 构建底部键盘（ReplyKeyboard）- 8个按钮，4x2布局
         reply_keyboard = [
             [KeyboardButton("💎 飞机会员"), KeyboardButton("⚡ 能量兑换")],
-            [KeyboardButton("🔍 地址监听"), KeyboardButton("👤 个人中心")],
-            [KeyboardButton("🔄 TRX 兑换"), KeyboardButton("👨‍💼 联系客服")],
-            [KeyboardButton("🌐 实时U价"), KeyboardButton("📱 免费克隆")],
+            [KeyboardButton("🔍 地址查询"), KeyboardButton("👤 个人中心")],
+            [KeyboardButton("� TRX兑换"), KeyboardButton("👨‍💼 联系客服")],
+            [KeyboardButton("💵 实时U价"), KeyboardButton("🎁 免费克隆")],
         ]
         reply_markup = ReplyKeyboardMarkup(
             reply_keyboard,
@@ -131,8 +133,8 @@ class MainMenuHandler:
         query = update.callback_query
         await query.answer()
         
-        # 从配置中读取管理员设置的文案
-        text = settings.free_clone_message
+        # 从数据库读取免费克隆文案（支持热更新）
+        text = get_content("free_clone_message", default=settings.free_clone_message)
         
         keyboard = [
             [InlineKeyboardButton("👨‍💼 联系客服", callback_data="menu_support")],
@@ -151,9 +153,12 @@ class MainMenuHandler:
         if query:
             await query.answer()
         
+        # 从数据库读取客服联系方式（支持热更新）
+        support_contact = get_content("support_contact", default=settings.support_contact)
+        
         text = (
             "👨‍💼 <b>联系客服</b>\n\n"
-            f"客服 Telegram: {settings.support_contact}\n\n"
+            f"客服 Telegram: {support_contact}\n\n"
             "工作时间: 24/7 全天候服务"
         )
         
@@ -168,7 +173,8 @@ class MainMenuHandler:
     @staticmethod
     async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         """处理 /help 命令"""
-        text = (
+        # 从数据库读取帮助文案（支持热更新）
+        default_help = (
             "📚 <b>帮助文档</b>\n\n"
             "<b>🎯 可用命令：</b>\n"
             "/start - 显示主菜单\n"
@@ -186,6 +192,7 @@ class MainMenuHandler:
             "• 请确保转账金额精确到小数点后3位\n\n"
             "如需更多帮助，请联系客服 👨‍💼"
         )
+        text = get_content("help_message", default=default_help)
         
         keyboard = [[InlineKeyboardButton("🏠 返回主菜单", callback_data="back_to_main")]]
         reply_markup = InlineKeyboardMarkup(keyboard)
@@ -194,110 +201,118 @@ class MainMenuHandler:
     
     @staticmethod
     async def show_usdt_price(update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """显示实时 USDT 汇率信息"""
+        """显示实时 USDT 汇率（OKX C2C 商家报价）"""
         from datetime import datetime
         import httpx
         
-        # 获取当前时间
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         
         try:
-            # 尝试从公开 API 获取实时汇率（示例使用 CoinGecko API）
             async with httpx.AsyncClient(timeout=10.0) as client:
                 response = await client.get(
-                    "https://api.coingecko.com/api/v3/simple/price",
+                    "https://www.okx.com/v3/c2c/tradingOrders/books",
                     params={
-                        "ids": "tether",
-                        "vs_currencies": "cny,usd"
+                        "quoteCurrency": "CNY",
+                        "baseCurrency": "USDT",
+                        "side": "sell",
+                        "paymentMethod": "all",
+                        "limit": 10
                     }
                 )
                 
                 if response.status_code == 200:
                     data = response.json()
-                    cny_rate = data.get("tether", {}).get("cny", 0)
-                    usd_rate = data.get("tether", {}).get("usd", 0)
+                    merchants = data.get("data", {}).get("sell", [])[:10]
                     
-                    text = (
-                        "📊 <b>实时 U 价</b>\n\n"
-                        f"💵 <b>USDT 实时汇率</b>\n\n"
-                        f"🇨🇳 CNY: <code>{cny_rate:.4f}</code> 元\n"
-                        f"🇺🇸 USD: <code>{usd_rate:.4f}</code> 美元\n\n"
-                        f"⏰ 更新时间: {current_time}\n\n"
-                        "💡 数据来源: CoinGecko API"
-                    )
+                    if merchants:
+                        text = "📊 <b>实时U价</b>\n\n"
+                        text += "🌐 <b>OTC实时汇率：</b>\n"
+                        text += "来源： 欧易\n\n"
+                        text += "<b>卖出价格</b>\n"
+                        
+                        circle_nums = ["①", "②", "③", "④", "⑤", "⑥", "⑦", "⑧", "⑨", "⑩"]
+                        
+                        for i, merchant in enumerate(merchants):
+                            price = merchant.get("price", "0.00")
+                            name = merchant.get("nickName", "未知商家")
+                            if len(name) > 15:
+                                name = name[:15] + "..."
+                            text += f"{circle_nums[i]} {price} {name}\n"
+                        
+                        text += f"\n⏰ <b>更新时间：</b> {current_time}"
+                    else:
+                        raise Exception("暂无商家报价")
                 else:
                     raise Exception("API 请求失败")
         
         except Exception as e:
             logger.error(f"获取 USDT 汇率失败: {e}")
-            # 使用模拟数据作为后备
-            text = (
-                "📊 <b>实时 U 价</b>\n\n"
-                "💵 <b>USDT 参考汇率</b>\n\n"
-                "🇨🇳 CNY: <code>7.13</code> 元\n"
-                "🇺🇸 USD: <code>1.00</code> 美元\n\n"
-                f"⏰ 当前时间: {current_time}\n\n"
-                "⚠️ 汇率仅供参考，实际交易以平台实时价格为准"
-            )
+            text = "📊 <b>实时U价</b>\n\n⚠️ 汇率数据暂时不可用\n\n💰 参考价格：7.13 CNY/USDT\n💡 请稍后重试或联系客服"
         
-        keyboard = [[InlineKeyboardButton("🔄 刷新", callback_data="refresh_usdt_price")]]
+        keyboard = [
+            [InlineKeyboardButton("🔄 刷新汇率", callback_data="refresh_usdt_price")],
+            [InlineKeyboardButton("🔙 返回主菜单", callback_data="back_to_main")]
+        ]
         reply_markup = InlineKeyboardMarkup(keyboard)
-        
         await update.message.reply_text(text, parse_mode="HTML", reply_markup=reply_markup)
-    
     @staticmethod
     async def refresh_usdt_price(update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """刷新 USDT 汇率（回调处理）"""
+        """刷新 USDT 汇率（回调处理，OKX C2C 商家报价）"""
         from datetime import datetime
         import httpx
         
         query = update.callback_query
         await query.answer("正在刷新汇率...")
-        
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         
         try:
             async with httpx.AsyncClient(timeout=10.0) as client:
                 response = await client.get(
-                    "https://api.coingecko.com/api/v3/simple/price",
+                    "https://www.okx.com/v3/c2c/tradingOrders/books",
                     params={
-                        "ids": "tether",
-                        "vs_currencies": "cny,usd"
+                        "quoteCurrency": "CNY",
+                        "baseCurrency": "USDT",
+                        "side": "sell",
+                        "paymentMethod": "all",
+                        "limit": 10
                     }
                 )
                 
                 if response.status_code == 200:
                     data = response.json()
-                    cny_rate = data.get("tether", {}).get("cny", 0)
-                    usd_rate = data.get("tether", {}).get("usd", 0)
+                    merchants = data.get("data", {}).get("sell", [])[:10]
                     
-                    text = (
-                        "📊 <b>实时 U 价</b>\n\n"
-                        f"💵 <b>USDT 实时汇率</b>\n\n"
-                        f"🇨🇳 CNY: <code>{cny_rate:.4f}</code> 元\n"
-                        f"🇺🇸 USD: <code>{usd_rate:.4f}</code> 美元\n\n"
-                        f"⏰ 更新时间: {current_time}\n\n"
-                        "💡 数据来源: CoinGecko API"
-                    )
+                    if merchants:
+                        text = "📊 <b>实时U价</b>\n\n"
+                        text += "🌐 <b>OTC实时汇率：</b>\n"
+                        text += "来源： 欧易\n\n"
+                        text += "<b>卖出价格</b>\n"
+                        
+                        circle_nums = ["①", "②", "③", "④", "⑤", "⑥", "⑦", "⑧", "⑨", "⑩"]
+                        
+                        for i, merchant in enumerate(merchants):
+                            price = merchant.get("price", "0.00")
+                            name = merchant.get("nickName", "未知商家")
+                            if len(name) > 15:
+                                name = name[:15] + "..."
+                            text += f"{circle_nums[i]} {price} {name}\n"
+                        
+                        text += f"\n⏰ <b>更新时间：</b> {current_time}"
+                    else:
+                        raise Exception("暂无商家报价")
                 else:
                     raise Exception("API 请求失败")
         
         except Exception as e:
             logger.error(f"获取 USDT 汇率失败: {e}")
-            text = (
-                "📊 <b>实时 U 价</b>\n\n"
-                "💵 <b>USDT 参考汇率</b>\n\n"
-                "🇨🇳 CNY: <code>7.13</code> 元\n"
-                "🇺🇸 USD: <code>1.00</code> 美元\n\n"
-                f"⏰ 当前时间: {current_time}\n\n"
-                "⚠️ 汇率仅供参考，实际交易以平台实时价格为准"
-            )
+            text = "📊 <b>实时U价</b>\n\n⚠️ 汇率数据暂时不可用\n\n💰 参考价格：7.13 CNY/USDT\n💡 请稍后重试或联系客服"
         
-        keyboard = [[InlineKeyboardButton("🔄 刷新", callback_data="refresh_usdt_price")]]
+        keyboard = [
+            [InlineKeyboardButton("🔄 刷新汇率", callback_data="refresh_usdt_price")],
+            [InlineKeyboardButton("🔙 返回主菜单", callback_data="back_to_main")]
+        ]
         reply_markup = InlineKeyboardMarkup(keyboard)
-        
         await query.edit_message_text(text, parse_mode="HTML", reply_markup=reply_markup)
-    
     @staticmethod
     async def handle_keyboard_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
         """处理底部键盘按钮"""
@@ -314,10 +329,10 @@ class MainMenuHandler:
             from ..energy.handler import EnergyHandler
             await EnergyHandler.show_main_menu(update, context)
         
-        elif text == "🔍 地址监听":
+        elif text == "🔍 地址查询":
             # 导航到地址查询
             from ..address_query.handler import AddressQueryHandler
-            await AddressQueryHandler.start(update, context)
+            await AddressQueryHandler.query_address(update, context)
         
         elif text == "👤 个人中心":
             # 导航到个人中心
@@ -341,24 +356,26 @@ class MainMenuHandler:
             )
         
         elif text == "👨‍💼 联系客服":
-            # 显示客服联系方式
+            # 显示客服联系方式（从数据库读取）
             from ..config import settings
+            support_contact = get_content("support_contact", default=settings.support_contact)
             await update.message.reply_text(
-                f"👨‍💼 <b>联系客服</b>\n\n{settings.support_contact}",
+                f"👨‍💼 <b>联系客服</b>\n\n{support_contact}",
                 parse_mode="HTML"
             )
         
-        elif text == "🌐 实时U价":
+        elif text == "💵 实时U价":
             # 显示实时 USDT 汇率
             await MainMenuHandler.show_usdt_price(update, context)
         
-        elif text == "📱 免费克隆":
-            # 免费克隆功能
+        elif text == "🎁 免费克隆":
+            # 免费克隆功能（从数据库读取文案）
             from ..config import settings
+            clone_message = get_content("free_clone_message", default=settings.free_clone_message)
             keyboard = [[InlineKeyboardButton("👨‍💼 联系客服", callback_data="menu_support")]]
             reply_markup = InlineKeyboardMarkup(keyboard)
             await update.message.reply_text(
-                settings.free_clone_message,
+                clone_message,
                 parse_mode="HTML",
                 reply_markup=reply_markup
             )

@@ -1,0 +1,37 @@
+# FastAPI 后端核心依赖
+fastapi==0.109.2
+uvicorn[standard]==0.27.1
+pydantic==2.6.1
+pydantic-settings==2.1.0
+
+# 数据库 (复用现有 SQLAlchemy)
+sqlalchemy==2.0.27
+alembic==1.13.1
+
+# Redis
+redis==5.0.1
+
+# 异步任务队列 (arq - Redis Stream)
+arq==0.25.0
+
+# 可观测性
+structlog==24.1.0
+opentelemetry-api==1.22.0
+opentelemetry-sdk==1.22.0
+opentelemetry-exporter-otlp==1.22.0
+prometheus-client==0.19.0
+
+# 限流熔断
+slowapi==0.1.9
+pybreaker==1.0.2
+
+# 重试机制
+tenacity==8.2.3
+
+# HTTP 客户端
+httpx==0.26.0
+
+# 工具
+python-multipart==0.0.9
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4

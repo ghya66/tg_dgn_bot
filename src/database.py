@@ -3,8 +3,7 @@
 使用 SQLAlchemy + SQLite
 """
 from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, Boolean, Index
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker, Session
+from sqlalchemy.orm import declarative_base, sessionmaker, Session
 from datetime import datetime
 from typing import Optional
 import os
@@ -136,6 +135,45 @@ class EnergyOrder(Base):
     __table_args__ = (
         Index('idx_energy_user_status', 'user_id', 'status'),
         Index('idx_energy_order_type', 'order_type'),
+    )
+
+
+class Order(Base):
+    """通用订单表（用于管理后台）"""
+    __tablename__ = "orders"
+    
+    order_id = Column(String, primary_key=True, index=True)
+    user_id = Column(Integer, nullable=False, index=True)
+    order_type = Column(String, nullable=False)  # premium, deposit, trx_exchange, energy
+    
+    # 金额字段
+    base_amount = Column(Integer, nullable=False)  # 基础金额（微USDT）
+    unique_suffix = Column(Integer, nullable=True)  # 唯一后缀（3位小数模式）
+    amount_usdt = Column(Integer, nullable=False)  # 总金额（微USDT）
+    
+    # 状态字段
+    status = Column(String, default="PENDING", nullable=False)  # PENDING, PAID, DELIVERED, EXPIRED, CANCELLED
+    
+    # 收件人/目标地址
+    recipient = Column(String, nullable=True)  # Premium收件人 或 TRX地址
+    
+    # Premium 专用字段
+    premium_months = Column(Integer, nullable=True)  # Premium月数（3/6/12）
+    
+    # 交易信息
+    tx_hash = Column(String, nullable=True)  # 区块链交易哈希
+    
+    # 时间字段
+    created_at = Column(DateTime, default=datetime.now, nullable=False, index=True)
+    paid_at = Column(DateTime, nullable=True)  # 支付时间
+    delivered_at = Column(DateTime, nullable=True)  # 交付时间
+    expires_at = Column(DateTime, nullable=False)  # 过期时间
+    
+    # 索引
+    __table_args__ = (
+        Index('idx_orders_type_status', 'order_type', 'status'),
+        Index('idx_orders_user_status', 'user_id', 'status'),
+        Index('idx_orders_created', 'created_at'),
     )
 
 

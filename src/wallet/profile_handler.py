@@ -156,6 +156,7 @@ class ProfileHandler:
         
         # 分配唯一后缀
         await suffix_manager.connect()
+        # 先分配一个后缀（无需订单ID，稍后绑定）
         suffix = await suffix_manager.allocate_suffix()
         
         if suffix is None:
@@ -170,7 +171,7 @@ class ProfileHandler:
                 user_id=user_id,
                 base_amount=amount,
                 unique_suffix=suffix,
-                timeout_minutes=settings.ORDER_TIMEOUT_MINUTES
+                timeout_minutes=settings.order_timeout_minutes
             )
         
         # 保存订单ID到后缀池
@@ -184,7 +185,7 @@ class ProfileHandler:
             "✅ <b>充值订单已创建</b>\n\n"
             f"订单号: <code>{order.order_id}</code>\n"
             f"应付金额: <code>{order.total_amount:.3f}</code> USDT\n"
-            f"收款地址:\n<code>{settings.USDT_TRC20_RECEIVE_ADDR}</code>\n\n"
+            f"收款地址:\n<code>{settings.usdt_trc20_receive_addr}</code>\n\n"
             f"⏰ 倒计时: {remaining_minutes} 分钟\n\n"
             "⚠️ <b>注意事项:</b>\n"
             f"• 请务必转账 <b>{order.total_amount:.3f}</b> USDT\n"

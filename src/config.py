@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     
     # Telegram Bot
     bot_token: str
+    bot_owner_id: int = 0  # Bot Owner 用户 ID（用于管理面板权限验证）
     
     # USDT TRC20 支付
     usdt_trc20_receive_addr: str
@@ -92,6 +93,14 @@ class Settings(BaseSettings):
     
     # 客服联系方式配置
     support_contact: str = "@your_support_bot"  # 客服 Telegram 账号
+    
+    # FastAPI 管理后台配置（Stage 6-7）
+    api_base_url: str = "http://localhost:8000"
+    api_key: str = ""
+    env: str = "dev"
+    log_level: str = "INFO"
+    log_json_format: bool = False
+    database_url: str = "sqlite:///./data/bot.db"
     
     class Config:
         env_file = ".env"

@@ -4,10 +4,14 @@ Fixes #1
 Fixes #2  
 Fixes #3
 Fixes #4
+Fixes #5
+Fixes #6
+Fixes #7 (NEW)
 
 ## Goal
 实现：Premium直充（USDT→giftPremiumSubscription）✅、能量闪租/笔数套餐/闪兑（TRX/USDT直转）✅、
-地址查询(30min/人限频 免费)✅、个人中心(USDT余额充值 3位小数)✅、免费克隆、联系客服。
+地址查询(30min/人限频 免费)✅、个人中心(USDT余额充值 3位小数)✅、免费克隆、联系客服、
+**管理员面板（按钮式配置管理）✅**。
 
 ## Tech
 Python 3.11, python-telegram-bot v21, httpx, Pydantic Settings, SQLAlchemy 2.0。
@@ -67,6 +71,21 @@ Python 3.11, python-telegram-bot v21, httpx, Pydantic Settings, SQLAlchemy 2.0�
   - UI特性：QR码图片 + 可复制地址（<code>标签）
   - 按钮布局：优化为 4x2（8个按钮）
   - 完整测试覆盖（25 tests，包含汇率管理、地址验证、支付流程）
+
+- ✅ Issue #7: Bot 管理员面板（新功能）
+  - src/bot_admin/ 模块：Telegram Bot 内置管理面板
+  - 权限控制：仅 BOT_OWNER_ID 可访问（@owner_only 装饰器）
+  - 配置管理：SQLite 数据库存储（price_configs, content_configs, setting_configs）
+  - 实时生效：配置修改无需重启 Bot
+  - 审计日志：所有操作记录到 audit_logs 表
+  - 核心功能：
+    - 📊 统计数据：订单/用户/收入统计
+    - 💰 价格配置：Premium/TRX/能量价格管理
+    - 📝 文案配置：欢迎语/克隆/客服联系方式
+    - ⚙️ 系统设置：超时/限频/缓存/状态管理
+  - 按钮式操作：无需手动编辑 JSON/命令
+  - 完整文档：使用指南 + 实现总结
+  - 集成测试：7/7 通过（100%）
 
 ## Test Summary
 

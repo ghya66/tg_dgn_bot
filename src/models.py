@@ -23,6 +23,7 @@ class OrderType(str, Enum):
     PREMIUM = "premium"  # Premium会员直充
     ENERGY = "energy"  # 能量兑换
     DEPOSIT = "deposit"  # 余额充值
+    TRX_EXCHANGE = "trx_exchange"  # TRX兑换
     OTHER = "other"  # 其他
 
 
