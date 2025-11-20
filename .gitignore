@@ -10,3 +10,7 @@ Thumbs.db
 dump.rdb
 *.db
 tg_bot.db
+# logs & backups
+logs/
+bot.log
+.env.backup
